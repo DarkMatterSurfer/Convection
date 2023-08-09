@@ -1,0 +1,18 @@
+CONVECTION
+
+1. open new terminal
+2. change directory reach --- "cd ~/reach/convection"
+3. "conda activate dedalus3"
+4. run simulation --- "mpiexec -n 4 python3 rayleigh_benard.py"
+5. generate images --- “mpiexec -n 4 python3 plot_snapshots.py snapshots/*.h5”
+6. generate video from images --- "png2mp4 frames/ video_name.mp4 60"
+7. remove frames and snapshots for new simulation "rm -rf frames ; rm -rf snapshots"
+oneline. " mpiexec -n 4 python3 rayleigh_benard.py;mpiexec -n 4 python3 plot_snapshots.py snapshots/*.h5; png2mp4 frames/ video_name.mp4 frame_number '
+
+FLOW
+
+1. open new terminal
+2. change directory reach --- "cd ~/reach/flow"
+3. "conda activate dedalus3"
+4. run simulation --- "mpiexec -n 4 python3 shear_flow.py"
+5. generate images --- “mpiexec -n 4 python3 plot_snapshots.py snapshots/*.h5”
