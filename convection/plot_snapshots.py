@@ -2,10 +2,11 @@
 Plot 2D cartesian snapshots.
 
 Usage:
-    plot_snapshots.py <files>... [--output=<dir>]
+    plot_snapshots.py <files>... [--output=<dir> --lx=<float>]
 
 Options:
     --output=<dir>  Output directory [default: ./frames]
+    --lx=<float>  Output directory [default: 4]
 
 """
 
@@ -29,7 +30,7 @@ def main(filename, start, count, output):
 
     # Layout
     nrows, ncols = 2, 1
-    image = plot_tools.Box(16, 1)
+    image = plot_tools.Box(lx, 1)
     pad = plot_tools.Frame(0.3, 0, 0, 0)
     margin = plot_tools.Frame(0.2, 0.1, 0, 0)
 
@@ -68,7 +69,8 @@ if __name__ == "__main__":
     from dedalus.tools.parallel import Sync
 
     args = docopt(__doc__)
-
+    global lx
+    lx = float(args['--lx'])
     output_path = pathlib.Path(args['--output']).absolute()
     # Create output directory if needed
     with Sync() as sync:

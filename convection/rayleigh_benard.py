@@ -1,26 +1,16 @@
 """
-Dedalus script simulating 2D horizontally-periodic Rayleigh-Benard convection.
-This script demonstrates solving a 2D Cartesian initial value problem. It can
-be ran serially or in parallel, and uses the built-in analysis framework to save
-data snapshots to HDF5 files. The `plot_snapshots.py` script can be used to
-produce plots from the saved data. It should take about 5 cpu-minutes to run.
+Rayleigh-Benard 2d simulation
 
-The problem is non-dimensionalized using the box height and freefall time, so
-the resulting thermal diffusivity and viscosity are related to the Prandtl
-and Rayleigh numbers as:
+Usage:
+    rayleigh_benard.py [--ra=<float> --pr=<float> --st=<float> --lx=<float> --sn=<string>]
 
-    kappa = (Rayleigh * Prandtl)**(-1/2)
-    nu = (Rayleigh / Prandtl)**(-1/2)
+Options:
+    --ra=<float>  rayleigh number [default: 2e6]
+    --pr=<float>  prandtl number [default: 1]
+    --st=<float>  stop_sim [default: 50]
+    --lx=<float>  lx [default: 4]
+    --sn=<string>  output directory for snapshots [default: snapshots]
 
-For incompressible hydro with two boundaries, we need two tau terms for each the
-velocity and buoyancy. Here we choose to use a first-order formulation, putting
-one tau term each on auxiliary first-order gradient variables and the others in
-the PDE, and lifting them all to the first derivative basis. This formulation puts
-a tau term in the divergence constraint, as required for this geometry.
-
-To run and plot using e.g. 4 processes:
-    $ mpiexec -n 4 python3 rayleigh_benard.py
-    $ mpiexec -n 4 python3 plot_snapshots.py snapshots/*.h5
 """
 
 import numpy as np
@@ -29,21 +19,26 @@ import logging
 logger = logging.getLogger(__name__)
 import mpi4py
 import matplotlib.pyplot as plt
+from docopt import docopt
+import sys
+
+args = docopt(__doc__)
 
 CW = mpi4py.MPI.COMM_WORLD
+ncores = CW.size
 #Multi-Rayleigh Runs
 # Ra_list = [1e4,2e4,4e4,1e5,2e5,4e5,1e6,2e6,]
 # for index in Ra_list:
 # Parameters
-Lx, Lz = 4, 1
+Lx, Lz = float(args['--lx']), 1
 n = 6 #power of two 
 Nz_prime = 2**n
-Nx_prime = 4 * Nz_prime
+Nx_prime = float(args['--lx']) * Nz_prime
 Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
-Rayleigh = 2e4 #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
-Prandtl = 1
+Rayleigh = float(args['--ra']) #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
+Prandtl = float(args['--pr'])
 dealias = 3/2
-stop_sim_time = 200
+stop_sim_time = float(args['--st'])
 timestepper = d3.RK222
 max_timestep = 0.125
 dtype = np.float64
@@ -107,7 +102,7 @@ b['g'] *= z * (Lz - z) # Damp noise at walls
 b['g'] += Lz - z # Add linear background
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.05, max_writes=50)
+snapshots = solver.evaluator.add_file_handler(args['--sn'], sim_dt=0.05, max_writes=50)
 snapshots.add_task(b, name='buoyancy')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 

@@ -27,7 +27,7 @@ def averager(filename):
 dta_file_top = 'Runtopflux.csv' #input name of file you want to plot
 path = '/home/brogers/reach/convection/FluxData/'
 
-prefix_list = ['[2e5]' ]
+prefix_list = ['[2e4]' ]
 # , '[2e5]','[4e4]','[1e5]','[4e5]','[2e4]','[2e6]','[1e6]'
 Top_list =[]
 mean_flux_top = []
@@ -48,22 +48,22 @@ for index,prefix in enumerate(Top_list):
     
     
 
-    # x = np.log(Ra_list[index])
-    # y = np.log(Re_mean)
+    x = np.log(Top_list)
+    y_top = np.log(flux_mean_top)
     # # m, b = np.polyfit(x, y, 1)
     # # plt.plot(x, b+m*x)
-    # slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-    # plt.plot(x, slope*x + intercept, color='red', label='Regression Line')
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y_top)
+    plt.plot(x, slope*x + intercept, color='red', label='Regression Line')
     # print(flux_mean)
     # print(averager(file))
     # print(Top_list)
 
-# plt.scatter(Top_list, mean_flux_top)
-# plt.scatter(Bottom_list, mean_flux_bottom)
-# plt.ylabel('Mean Boundary Flux')
-# plt.xlabel('Rayleigh Number')
-# plt.yscale('log')
-# plt.xscale('log')
-# plt.title('Simulated mean Boundary Flux vs. Rayleigh number')
-# plt.show()
+plt.scatter(Top_list, mean_flux_top)
+plt.scatter(Bottom_list, mean_flux_bottom)
+plt.ylabel('Mean Boundary Flux')
+plt.xlabel('Rayleigh Number')
+plt.yscale('log')
+plt.xscale('log')
+plt.title('Simulated mean Boundary Flux vs. Rayleigh number')
+plt.show()
 print(mean_flux_bottom)
