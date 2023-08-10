@@ -23,7 +23,7 @@ def Re_averager(filename):
     return x 
 
 dta_file = 'Reynolds1.csv' #input name of file you want to plot
-path = '/home/brogers/reach/convection/ReynoldsData1/'
+path = '/home/brogers/reach/convection/Lx=4/ReynoldsData1/'
 
 prefix_list = ['[2e4]', '[4e4]', '[1e5]', '[2e5]', '[4e5]', '[1e6]', '[2e6]']
 Ra_list =[]

@@ -18,16 +18,16 @@ def averager(filename):
     time = Data[:,0]
     num = Data[:,1]
 
-    num_cut = num[time>=10]
+    num_cut = num[time>=125]
     mean = np.mean(num_cut)
     return mean
     # print(time)
     # print(num)
 
 dta_file_top = 'Runtopflux.csv' #input name of file you want to plot
-path = '/home/brogers/reach/convection/FluxData/'
+path = '/home/brogers/reach/convection/Lx=4/FluxData_Lx=4/'
 
-prefix_list = ['[2e4]' ]
+prefix_list = ['[2e4]','[1e4]','[2e5]']
 # , '[2e5]','[4e4]','[1e5]','[4e5]','[2e4]','[2e6]','[1e6]'
 Top_list =[]
 mean_flux_top = []
@@ -46,7 +46,8 @@ for index,prefix in enumerate(Top_list):
     flux_mean_bottom = averager(file)
     mean_flux_bottom.append(-1*flux_mean_bottom)
     
-    
+    plt.scatter(Top_list, mean_flux_top)
+    plt.scatter(Bottom_list, mean_flux_bottom)
 
     x = np.log(Top_list)
     y_top = np.log(flux_mean_top)
@@ -58,8 +59,8 @@ for index,prefix in enumerate(Top_list):
     # print(averager(file))
     # print(Top_list)
 
-plt.scatter(Top_list, mean_flux_top)
-plt.scatter(Bottom_list, mean_flux_bottom)
+    
+
 plt.ylabel('Mean Boundary Flux')
 plt.xlabel('Rayleigh Number')
 plt.yscale('log')

@@ -151,14 +151,14 @@ if (CW.rank == 0):
     Run_num = ''
 
     #Declaring file name 
-    # Reynolds_File = open(str(Rayleigh)+"Run" + Run_num + reyrey + filetype, 'w') 
+    Reynolds_File = open(str(Rayleigh)+"Run" + Run_num + reyrey + filetype, 'w') 
     TopFlux_File = open(str(Rayleigh)+'Run' + Run_num + fluxtop + filetype, 'w')
     BottomFlux_File = open(str(Rayleigh)+'Run' + Run_num + fluxbottom + filetype, 'w')
 
 
     #Writing in file
-    # for i in range(len(Reynolds_list)):
-    #     Reynolds_File.write(str(time_list[i]) + ', ' + str(Reynolds_list[i] ) + '\n')
+    for i in range(len(Reynolds_list)):
+        Reynolds_File.write(str(time_list[i]) + ', ' + str(Reynolds_list[i] ) + '\n')
         
     for i in range(len(heatflux_top)):
         TopFlux_File.write(str(time_list[i]) + ', ' + str(heatflux_top[i] ) + '\n')

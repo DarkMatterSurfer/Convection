@@ -8,7 +8,7 @@ import sys
 #Reading file -> conversion into dataframe
 dta_filetop = 'Runtopflux.csv' #input name of file you want to plot
 dta_filebottom = 'Runbottomflux.csv'
-path = '/home/brogers/reach/convection/'
+path = '/home/brogers/reach/convection/Lx=4/FluxData_Lx=4/'
 Rayleigh = 4e5
 prefix_list = [str(Rayleigh)]
 
