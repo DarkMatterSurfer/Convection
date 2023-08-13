@@ -19,18 +19,18 @@ Lx16Pr10 = np.array(np.genfromtxt(path_Lx16Pr1 + 'AspectRatio.csv', delimiter = 
 #Plot Lx=4 Pr=1 Aspect Ratio
 Ra_Lx4Pr1 = Lx4Pr1[:,0]
 Aspect_Lx4Pr1 = Lx4Pr1[:,1]
-plt.scatter(Ra_Lx4Pr1, Aspect_Lx4Pr1)
+plt.scatter(Ra_Lx4Pr1, Aspect_Lx4Pr1, label='Lx=4 Pr=1')
 #Plot Lx=4 Pr=10 Aspect Ratio
 Ra_Lx4Pr10 = Lx4Pr10[:,0]
 Aspect_Lx4Pr10 = Lx4Pr10[:,1]
-plt.scatter(Ra_Lx4Pr10, Aspect_Lx4Pr10)
+plt.scatter(Ra_Lx4Pr10, Aspect_Lx4Pr10, label='Lx=4 Pr=10')
 #Plot Lx=4 Pr=1 Aspect Ratio
 Ra_Lx16Pr1 = Lx16Pr1[:,0]
 Aspect_Lx16Pr1 = Lx16Pr1[:,1]
-plt.scatter(Ra_Lx16Pr1, Aspect_Lx16Pr1)
+plt.scatter(Ra_Lx16Pr1, Aspect_Lx16Pr1, label='Lx=16 Pr=1')
 Ra_Lx16Pr10 = Lx16Pr10[:,0]
 Aspect_Lx16Pr10 = Lx16Pr10[:,1]
-plt.scatter(Ra_Lx16Pr10, Aspect_Lx16Pr10)
+plt.scatter(Ra_Lx16Pr10, Aspect_Lx16Pr10, label= 'Lx=16 Pr=10')
 
 
 
@@ -39,4 +39,5 @@ plt.xlabel('Aspect Ratio')
 plt.xscale('log')
 plt.ylabel('Rayleigh Number')
 plt.title('Simulated Aspect Ratios')
+plt.legend()
 plt.show()

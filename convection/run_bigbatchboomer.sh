@@ -71,7 +71,7 @@
 # # bash run.sh 8 4e3 10 200 16 
 # # bash run.sh 8 1e3 10 200 16
 # # bash run.sh 8 2e3 10 200 16
- bash run.sh 8 6e3 10 200 16
+#  bash run.sh 8 6e3 10 200 16
 
 # # bash run.sh 8 4e4 10 200 16
 # # bash run.sh 8 1e4 10 200 16
