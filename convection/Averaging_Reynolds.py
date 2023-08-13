@@ -38,7 +38,7 @@ for index,prefix in enumerate(prefix_list):
     Re_mean = Re_averager(file)
     Re_list.append(Re_mean)
     plt.scatter(Ra_list[index], Re_mean)
-    x = np.log(Ra_list[index])
+    x = np.log(Ra_lis)
     y = np.log(Re_mean)
     # # m, b = np.polyfit(x, y, 1)
     # # plt.plot(x, b+m*x)

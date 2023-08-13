@@ -27,7 +27,7 @@ def averager(filename):
 dta_file_top = 'Runtopflux.csv' #input name of file you want to plot
 path = '/home/brogers/reach/convection/Lx=4/FluxData_Lx=4/'
 
-prefix_list = ['[2e4]','[1e4]','[2e5]']
+prefix_list = ['[4e4]', '[2e5]','[4e4]','[1e5]','[4e5]','[2e4]','[2e6]','[1e6]']
 # , '[2e5]','[4e4]','[1e5]','[4e5]','[2e4]','[2e6]','[1e6]'
 Top_list =[]
 mean_flux_top = []
