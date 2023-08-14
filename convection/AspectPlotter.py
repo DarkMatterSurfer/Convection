@@ -32,12 +32,11 @@ Ra_Lx16Pr10 = Lx16Pr10[:,0]
 Aspect_Lx16Pr10 = Lx16Pr10[:,1]
 plt.scatter(Ra_Lx16Pr10, Aspect_Lx16Pr10, label= 'Lx=16 Pr=10')
 
-
-
 ### Figure Settings
-plt.xlabel('Aspect Ratio')
+
+plt.xlabel('Rayleigh Number')
 plt.xscale('log')
-plt.ylabel('Rayleigh Number')
+plt.ylabel('Aspect Ratio')
 plt.title('Simulated Aspect Ratios')
 plt.legend()
 plt.show()
