@@ -10,7 +10,7 @@ Options:
     --st=<float>  stop_sim [default: 50]
     --lx=<float>  lx [default: 4]
     --sn=<string>  output directory for snapshots [default: snapshots]
-    --state=<string>  load directory for previous state [default: none]
+    --state=<string>  load directory for previous state [default: ]
 
 """
 
@@ -32,7 +32,7 @@ ncores = CW.size
 # for index in Ra_list:
 # Parameters
 Lx, Lz = float(args['--lx']), 1
-n = 4 #power of two 
+n = 6 #power of two 
 Nz_prime = 2**n
 Nx_prime = float(args['--lx']) * Nz_prime
 Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
@@ -51,9 +51,12 @@ xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
 zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 
 # Fields
-p = dist.Field(name='p', bases=(xbasis,zbasis))
-b = dist.Field(name='b', bases=(xbasis,zbasis))
-u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
+p = dist.Field(name='p', bases=(xbasis,zbasis)) #pressure field
+rho = dist.Field(name='rho', bases=(zbasis)) #density field 
+z  = dist.local_grid(zbasis)
+rho['g']=np.exp(-2*z)
+b = dist.Field(name='b', bases=(xbasis,zbasis)) #temperature
+u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis)) #velocity
 tau_p = dist.Field(name='tau_p')
 tau_b1 = dist.Field(name='tau_b1', bases=xbasis)
 tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
@@ -61,25 +64,14 @@ tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
 
 # Substitutions
-kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
-
-sig = 30 
-e = 0.1
-Tbump = 0.5
-Tplus = b -Tbump + e
-Tminus = b -Tbump - e
-A = 0.5
-pi = np.pi
-
-koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
-
-
+kappa = (Rayleigh * Prandtl)**(-1/2)
 nu = (Rayleigh / Prandtl)**(-1/2)
 x, z = dist.local_grids(xbasis, zbasis)
 ex, ez = coords.unit_vector_fields(dist)
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
+grad_rho = d3.grad(rho)
 grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
 
 cond_flux = grad_b @ ez
@@ -89,14 +81,17 @@ top_flux = d3.Integrate(cond_flux(z=Lz), 'x')
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
-problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
-problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(b) - kappa*div(grad_b) + lift(tau_b2) = - u@grad(b) + koopa*div(grad_b)") #Bouyancy equation
-problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
-problem.add_equation("b(z=0) = Lz")
-problem.add_equation("u(z=0) = 0")
-problem.add_equation("b(z=Lz) = 0")
-problem.add_equation("u(z=Lz) = 0")
+problem = d3.IVP([p,b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
+problem.add_equation("rho*trace(grad_u) + tau_p + u@grad_rho = 0")
+problem.add_equation("dt(b) - kappa*div(grad_b) + lift(tau_b2) = - u@grad(b)") #energy 
+problem.add_equation("dt(u) - nu*(div(grad_u)+(1/3)*grad(trace(grad_u)))/rho + grad(p/rho) - (b*ez) + lift(tau_u2) = - u@grad(u)") #momentum add density to make compressible
+# trace(grad_u) -> div
+
+#Boundary Conditions
+problem.add_equation("b(z=0) = Lz") #The domain has high temp at the bottom boundary
+problem.add_equation("u(z=0) = 0") #Stil no slip 
+problem.add_equation("b(z=Lz) = 0") #The domain has lowest temp at the top boundary
+problem.add_equation("u(z=Lz) = 0") #Still no slip boundary
 problem.add_equation("integ(p) = 0") # Pressure gauge
 
 # grad_ => gradient
@@ -111,7 +106,8 @@ solver.stop_sim_time = stop_sim_time
 
 # Initial conditions
 state = args['--state']
-if (state == 'none' ):
+
+if (len(state) == 0):
     b.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise intal parameters~
     b['g'] *= z * (Lz - z) # Damp noise at walls
     b['g'] += Lz - z # Add linear background
@@ -128,7 +124,7 @@ checkpoint = solver.evaluator.add_file_handler('checkpoint_' + args['--sn'], sim
 checkpoint.add_tasks(solver.state, layout='g')
 
 # CFL
-CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.2, threshold=0.05,
+CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.5, threshold=0.05,
             max_change=1.5, min_change=0.5, max_dt=max_timestep)
 CFL.add_velocity(u)
 

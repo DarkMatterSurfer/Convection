@@ -18,14 +18,14 @@ def Re_averager(filename):
     Re_time = ReData[:,0]
     Re_num = ReData[:,1]
 
-    Re_num_cut = Re_num[Re_time>=125]
+    Re_num_cut = Re_num[Re_time>=30]
     x = np.mean(Re_num_cut)
     return x 
 
-dta_file = 'Reynolds1.csv' #input name of file you want to plot
-path = '/home/brogers/reach/convection/Lx=4/ReynoldsData1/'
+dta_file = 'RunReynolds.csv' #input name of file you want to plot
+path = '/home/brogers/reach/convection/Aelastic_approx/'
 
-prefix_list = ['[2e4]', '[4e4]', '[1e5]', '[2e5]', '[4e5]', '[1e6]', '[2e6]']
+prefix_list = ['[2e6]']
 Ra_list =[]
 Re_list = []
 for prefix in prefix_list: 
@@ -34,11 +34,11 @@ for prefix in prefix_list:
     Ra_list.append(Ra)
 
 for index,prefix in enumerate(prefix_list):
-    file = path + prefix + dta_file
+    file = path + '2000000.0' + dta_file
     Re_mean = Re_averager(file)
     Re_list.append(Re_mean)
     plt.scatter(Ra_list[index], Re_mean)
-    x = np.log(Ra_lis)
+    x = np.log(Ra_list)
     y = np.log(Re_mean)
     # # m, b = np.polyfit(x, y, 1)
     # # plt.plot(x, b+m*x)
