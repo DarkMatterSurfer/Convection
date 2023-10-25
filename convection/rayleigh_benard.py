@@ -32,7 +32,7 @@ ncores = CW.size
 # for index in Ra_list:
 # Parameters
 Lx, Lz = float(args['--lx']), 1
-n = 4 #power of two 
+n = 6 #power of two 
 Nz_prime = 2**n
 Nx_prime = float(args['--lx']) * Nz_prime
 Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
@@ -60,11 +60,11 @@ tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
 tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
 
-# Substitutions
+# Hollow Substitutions
 kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
 
 sig = 30 
-e = 0.1
+e = 0.3
 Tbump = 0.5
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
@@ -91,7 +91,7 @@ top_flux = d3.Integrate(cond_flux(z=Lz), 'x')
 # First-order form: "lap(f)" becomes "div(grad_f)"
 problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
 problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(b) - kappa*div(grad_b) + lift(tau_b2) = - u@grad(b) + koopa*div(grad_b)") #Bouyancy equation
+problem.add_equation("dt(b) - kappa*div(grad_b) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b)") #Bouyancy equation
 problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
 problem.add_equation("b(z=0) = Lz")
 problem.add_equation("u(z=0) = 0")

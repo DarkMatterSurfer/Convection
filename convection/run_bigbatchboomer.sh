@@ -162,6 +162,3 @@
 # bash run.sh 8 2.5e5 1 200 16 checkpoint_2e5/checkpoint_2e5_s1.h5
 # bash run.sh 8 3e5 1 200 16 checkpoint_2p5e5/checkpoint_2p5e5_s1.h5
 # bash run.sh 8 3.5e5 1 200 16 checkpoint_3e5/checkpoint_3e5_s1.h5
-
-
-
