@@ -1,6 +1,6 @@
 import numpy as np
 choice = input("Calc note or tension:")
-stringlength = 0.6475
+stringlength = 0.6475 
 stringmass = 0.002
 notefreq = [20.60, 49.00, 32.70, 36.71]
 indices = [0, 1, 2, 3]

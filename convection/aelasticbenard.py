@@ -52,23 +52,22 @@ zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 
 # Fields
 p = dist.Field(name='p', bases=(xbasis,zbasis))
-b = dist.Field(name='b', bases=(xbasis,zbasis))
+s = dist.Field(name='s', bases=(xbasis,zbasis)) # entropy
 u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
 tau_p = dist.Field(name='tau_p')
-tau_b1 = dist.Field(name='tau_b1', bases=xbasis)
-tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
+tau_s1 = dist.Field(name='tau_s1', bases=xbasis)
+tau_s2 = dist.Field(name='tau_s2', bases=xbasis)
 tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
-
 # Hollow Substitutions
 kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
 
 sig = 30 
-e = 0.1
+e = 0.3
 Tbump = 0.5
-Tplus = b -Tbump + e
-Tminus = b -Tbump - e
-A = 0.5
+Tplus = s -Tbump + e
+Tminus = s -Tbump - e
+A = 0.0
 pi = np.pi
 
 koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
@@ -80,22 +79,39 @@ ex, ez = coords.unit_vector_fields(dist)
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
-grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
+grad_s = d3.grad(s) + ez*lift(tau_s1) # First-order reduction
+#background quantities
+rho = dist.Field(name='rho', bases=(zbasis, ))
+Q = dist.Field(name='Q', bases=(zbasis, ))
+phi = dist.Field(name='phi', bases=(zbasis, ))
+T = dist.Field(name='T', bases=(zbasis, ))
 
-cond_flux = grad_b @ ez
+gamma = 5/3 #Neutral Hydrogen
+cp = gamma/(gamma-1)
+cv = 1/(gamma-1)
+g = 1 #paramter
+q = ((gamma-1)/gamma)*g
+T_b = 1 
+T['g'] = q*z + T_b
+rho['g'] = np.power(q*z + T_b, (1/(1-gamma)))
+grad_rho = d3.grad(rho)
+z_bl = 0.1
+Q['g'] = 1 - np.greater(z, z_bl) - np.greater(z, 1 - z_bl)
+
+cond_flux = grad_s @ ez
 bottom_flux = d3.Integrate(cond_flux(z=0), 'x')
 top_flux = d3.Integrate(cond_flux(z=Lz), 'x')
 
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
-problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
-problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(b) - kappa*div(grad_b) + (u@ez)/2 + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b)") #Bouyancy equation u@ez supercriticality of 2 
-problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
-problem.add_equation("b(z=0) = Lz")
+problem = d3.IVP([p, s, u, tau_p, tau_s1, tau_s2, tau_u1, tau_u2], namespace=locals())
+problem.add_equation("rho*trace(grad_u) + tau_p + u@grad_rho = 0") #
+problem.add_equation("dt(s) + lift(tau_s2) = - u@grad(s) - div(Frad)/(rho*T) + (PHI+Q)/(rho*T)") #Bouyancy equation u@ez supercriticality of 2 
+problem.add_equation("dt(u) + grad(p) - s*ez*g/cp + lift(tau_u2) = - u@grad(u) + div(PI)/rho") #Momentum equation
+problem.add_equation("s(z=0) = 0")
 problem.add_equation("u(z=0) = 0")
-problem.add_equation("b(z=Lz) = 0")
+problem.add_equation("s(z=Lz) = 0")
 problem.add_equation("u(z=Lz) = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge
 
