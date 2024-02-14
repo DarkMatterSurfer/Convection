@@ -8,7 +8,7 @@ Options:
     --ra=<float>  rayleigh number [default: 2e6]
     --pr=<float>  prandtl number [default: 1]
     --st=<float>  stop_sim [default: 50]
-    --lx=<float>  lx [default: 4]
+    --lx=<float>  lx [default: 1]
     --sn=<string>  output directory for snapshots [default: snapshots]
     --state=<string>  load directory for previous state [default: none]
 
@@ -68,7 +68,7 @@ e = 0.1
 Tbump = 0.5
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
-A = 0.5
+A = 0
 pi = np.pi
 
 koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
@@ -82,20 +82,23 @@ lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
 grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
 
-cond_flux = grad_b @ ez
+cond_flux = grad_b  @ ez
 bottom_flux = d3.Integrate(cond_flux(z=0), 'x')
 top_flux = d3.Integrate(cond_flux(z=Lz), 'x')
 
+integx = lambda arg: d3.Integrate(arg, 'x')
+integ = lambda arg: d3.Integrate(integx(arg), 'z')
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
 problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
 problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(b) - kappa*div(grad_b) + (u@ez)/2 + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b)") #Bouyancy equation u@ez supercriticality of 2 
+problem.add_equation("dt(b) - kappa*div(grad_b) + (u@ez) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b)") #Bouyancy equation u@ez supercriticality of 2 
 problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
+#Boundary conditions
 problem.add_equation("b(z=0) = Lz")
 problem.add_equation("u(z=0) = 0")
-problem.add_equation("b(z=Lz) = 0")
+problem.add_equation("b(z=Lz) = -Lz")
 problem.add_equation("u(z=Lz) = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge
 
@@ -114,7 +117,7 @@ state = args['--state']
 if (state == 'none' ):
     b.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise intal parameters~
     b['g'] *= z * (Lz - z) # Damp noise at walls
-    b['g'] += Lz - z # Add linear background
+    b['g'] += Lz - 2*z # Add linear background
 else:
     solver.load_state(state)
     solver.sim_time = 0.0
@@ -124,10 +127,25 @@ snapshots = solver.evaluator.add_file_handler(args['--sn'], sim_dt=0.05, max_wri
 snapshots.add_task(b, name='buoyancy')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 
-checkpoint = solver.evaluator.add_file_handler('checkpoint_' + args['--sn'], sim_dt=199)
-checkpoint.add_tasks(solver.state, layout='g')
+# checkpoint = solver.evaluator.add_file_handler('checkpoint_' + args['--sn'], sim_dt=199)
+# checkpoint.add_tasks(solver.state, layout='g')
 
-# CFL
+profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.05, max_writes=5000)
+profiles.add_task(integx(u@ez * b), name = 'convective flux') #Convective flux is <w*b>
+Nusselt =(integ(u@ez*b)+(integ(-kappa * grad_b@ez)))/integ(-kappa * grad_b@ez)
+profiles.add_task(Nusselt, name = "Nusselt") #
+profiles.add_task(integx(-kappa * grad_b@ez), name = 'diffusive flux') #diffusive flux is <-kappa*dz(b)>
+Ke_x = ((u@ex)**2)/2
+Ke_z = ((u@ez)**2)/2
+profiles.add_task(integx(Ke_x),name = 'kinetic energy in x')
+profiles.add_task(integx(Ke_z),name = 'kinetic energy in z')
+profiles.add_task(integx(b),name = 'mean temperature profile')
+profiles.add_task(integx(u@ex), name = 'mean x velocity')
+profiles.add_task(integx(u@ez), name = 'mean z velocity')
+vort = d3.div(d3.skew(u))
+profiles.add_task(integx(vort**2), name = 'entrsophy')
+profiles.add_task(integx(abs(-kappa * grad_b@ex)), name = 'X diffusive flux')
+# CFLp
 CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.2, threshold=0.05,
             max_change=1.5, min_change=0.5, max_dt=max_timestep)
 CFL.add_velocity(u)
