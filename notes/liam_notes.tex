@@ -219,4 +219,22 @@ The radiative conductivity
 \end{align*}
 
 
+\newpage
+\section{Modified Boussinesq}
+
+Abstract: we can implement the Boussinesq approximation when...
+\begin{enumerate}
+    \item domain height is smaller than scale height
+    \item perturbation fluctuations do not exceed the total static variation.
+\end{enumerate}
+Under these assumptions, the Boussinesq system formally approaches the compressible equations.
+
+The compressible system is given by
+\begin{align*}
+    \rho\partial_t \vec{v} + \rho\vec{v}\cdot\grad\vec{v} &= -\grad p - \rho \vec{g} + \mu\grad^{2}\vec{v} + \frac{\mu}{3}\grad(\grad\cdot\vec{v}) \\
+    \partial_t\rho + \vec{v}\cdot\grad\rho + \rho\grad\cdot\vec{v} &= 0 \\
+    \rho C_v \left( \partial_t + \vec{v}\cdot\grad \right) T + p\grad\cdot\vec{v} &= \kappa\grad^2 T + Q + \mu\grad\cdot(\vec{v}\cdot\grad\vec{v}) - \frac{2}{3}\mu(\grad\cdot\vec{v})^2 \\
+    \rho &= \rho(p, T)
+\end{align*}
+
 \end{document}
