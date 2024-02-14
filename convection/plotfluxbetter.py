@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import dedalus.public as d3
+import sys
 path = os.path.dirname(os.path.abspath(__file__))
 print(path) #independent
 Lx, Lz = float(1), 1
@@ -25,24 +26,44 @@ zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 x, z = dist.local_grids(xbasis, zbasis)
 import h5py
 filename = "file.hdf5"
-list = [r"diffusive flux",
-        r"kinetic energy in x",
-        r"kinetic energy in z"
-        ,r"mean x velocity"
-        ,r"mean z velocity",
-        r"entrsophy",
-        r"X diffusive flux",
-        r"convective flux"]
-with h5py.File(path + '/../profiles/profiles_s1.h5', "r") as f:
-    def figmaker(task,start,end):
-        data = f['tasks'][task][()].squeeze()
-        buyo = data[start:end,:]
-        buyo_mean = np.mean(buyo, axis = 0)
-        plt.plot(z.squeeze(),buyo_mean)
-        plt.xlabel('z')
-        plt.ylabel(task)
-        plt.title(task)
-        plt.savefig(path+"/../profiles/"+task+'_fig.png')
-        plt.close()
-    for i in list:
-        figmaker(i,600,-1)
+prof= [r"diffusive flux"]
+data_dict = dict()
+for task in prof: 
+    data_dict[task] = None
+# data_list = []
+# mean_list= []
+# [r"diffusive flux",
+# r"kinetic energy in x",
+# r"kinetic energy in z"
+# ,r"mean x velocity"
+# ,r"mean z velocity",
+# r"mean temperature profile",
+# r"entrsophy",
+# r"X diffusive flux",
+# r"convective flux"]
+filenames = ["profiles_s4.h5","profiles_s5.h5"]
+index = 0
+for file in filenames: 
+    with h5py.File(path + '/profiles/'+file, "r") as f:
+        for task in data_dict.keys():
+            data = f['tasks'][task][()].squeeze()
+            # times = f['scales']['sim_time'][()].squeeze()
+            # print(times)
+            size = np.shape(data)
+            index += size[0] 
+            task_mean= np.sum(data, axis = 0)
+            # print(data.shape())
+            print(type(data_dict[task]))
+            if isinstance(data_dict[task], np.ndarray):
+                data_dict[task] += task_mean 
+            else:
+                data_dict[task] = task_mean 
+for task in data_dict.keys():
+    plt.plot(z.squeeze(),data_dict[task]/(index))
+    plt.xlabel('z')
+    plt.ylabel(task)
+    plt.title(task)
+    plt.savefig(path+"/profiles/"+task+'_fig.png')
+    plt.close()
+                
+

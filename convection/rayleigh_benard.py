@@ -65,26 +65,22 @@ kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
 
 sig = 30 
 e = 0.1
-Tbump = 0.5
+Tbump = 0.0
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
-A = 0
+A = 0.5
 pi = np.pi
 
 koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
 
 
-nu = (Rayleigh / Prandtl)**(-1/2)
+nu = (Rayleigh / Prandtl)**(-1/2) #viscousity
 x, z = dist.local_grids(xbasis, zbasis)
 ex, ez = coords.unit_vector_fields(dist)
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
 grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
-
-cond_flux = grad_b  @ ez
-bottom_flux = d3.Integrate(cond_flux(z=0), 'x')
-top_flux = d3.Integrate(cond_flux(z=Lz), 'x')
 
 integx = lambda arg: d3.Integrate(arg, 'x')
 integ = lambda arg: d3.Integrate(integx(arg), 'z')
@@ -121,45 +117,66 @@ if (state == 'none' ):
 else:
     solver.load_state(state)
     solver.sim_time = 0.0
+#Checkpoints 
+checkpoints = solver.evaluator.add_file_handler('checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
+checkpoints.add_tasks(solver.state, layout='g')
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler(args['--sn'], sim_dt=0.05, max_writes=50)
+snapshots = solver.evaluator.add_file_handler(args['--sn'], sim_dt=0.05, max_writes=50, mode = 'overwrite')
 snapshots.add_task(b, name='buoyancy')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 
-# checkpoint = solver.evaluator.add_file_handler('checkpoint_' + args['--sn'], sim_dt=199)
-# checkpoint.add_tasks(solver.state, layout='g')
+#Profiles 
+profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.05, max_writes=500, mode = 'overwrite')
 
-profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.05, max_writes=5000)
+# Flow properties
+flow = d3.GlobalFlowProperty(solver, cadence=10)
+Reynolds_Num = (np.sqrt(u@u))/(nu)
+flow.add_property(Reynolds_Num, name='Re') #Reynolds Number
+profiles.add_task(integx(Reynolds_Num), name = "reynolds")
+#Fluxes
+    #Convective Flux
 profiles.add_task(integx(u@ez * b), name = 'convective flux') #Convective flux is <w*b>
-Nusselt =(integ(u@ez*b)+(integ(-kappa * grad_b@ez)))/integ(-kappa * grad_b@ez)
-profiles.add_task(Nusselt, name = "Nusselt") #
+    #Diffusive Flux
 profiles.add_task(integx(-kappa * grad_b@ez), name = 'diffusive flux') #diffusive flux is <-kappa*dz(b)>
 Ke_x = ((u@ex)**2)/2
+profiles.add_task(integx(abs(-kappa * grad_b@ex)), name = 'X diffusive flux')
+
+#Nusselt Number
+Nusselt =(integ(u@ez*b)+(integ(-kappa * grad_b@ez)))/integ(-kappa * grad_b@ez)
+profiles.add_task(Nusselt, name = "Nusselt") 
+
+# Buoyancy 
+profiles.add_task(integx(b), name = "buoyancy")
+#Kinetic Energy
 Ke_z = ((u@ez)**2)/2
 profiles.add_task(integx(Ke_x),name = 'kinetic energy in x')
 profiles.add_task(integx(Ke_z),name = 'kinetic energy in z')
+
+#Mean Temperature Profile 
 profiles.add_task(integx(b),name = 'mean temperature profile')
+
+# Velocities
 profiles.add_task(integx(u@ex), name = 'mean x velocity')
 profiles.add_task(integx(u@ez), name = 'mean z velocity')
+
+#Enstrophy
 vort = d3.div(d3.skew(u))
 profiles.add_task(integx(vort**2), name = 'entrsophy')
-profiles.add_task(integx(abs(-kappa * grad_b@ex)), name = 'X diffusive flux')
+
 # CFLp
 CFL = d3.CFL(solver, initial_dt=max_timestep, cadence=10, safety=0.2, threshold=0.05,
             max_change=1.5, min_change=0.5, max_dt=max_timestep)
 CFL.add_velocity(u)
 
-# Flow properties
-flow = d3.GlobalFlowProperty(solver, cadence=10)
-flow.add_property(np.sqrt(u@u)/nu, name='Re')
+
 
 # Plotting Lists
 Reynolds_list = [] #max Reynolds number list
 time_list = []  #time list
 
-heatflux_top = []
-heatflux_bottom = []
+# heatflux_top = []
+# heatflux_bottom = []
 #Main Loop 
 startup_iter = 10
 try:
@@ -168,48 +185,44 @@ try:
         timestep = CFL.compute_timestep()
         solver.step(timestep)
         if (solver.iteration-1) % 10 == 0:
-            f1 = np.average(np.mean(bottom_flux.evaluate()['g']))
-            f2 = np.average(np.mean(top_flux.evaluate()['g']))
             max_Re = flow.max('Re')
             Reynolds_list.append(max_Re)
             time_list.append(solver.sim_time)
-            heatflux_top.append(f2)
-            heatflux_bottom.append(f1)
-            logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f, flux_bottom=%f, flux_top=%f' %(solver.iteration, solver.sim_time, timestep, max_Re, f1, f2))
+            logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, timestep, max_Re))
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
 finally:
     solver.log_stats()
 
-if (CW.rank == 0):
-    filetype = '.csv'
-    fluxtop = 'topflux'
-    fluxbottom = 'bottomflux'
-    reyrey = 'Reynolds'
-    Run_num = ''
+# if (CW.rank == 0):
+#     filetype = '.csv'
+#     fluxtop = 'topflux'
+#     fluxbottom = 'bottomflux'
+#     reyrey = 'Reynolds'
+#     Run_num = ''
 
-    #Declaring file name 
-    Reynolds_File = open(str(Rayleigh)+"Run" + Run_num + reyrey + filetype, 'w') 
-    TopFlux_File = open(str(Rayleigh)+'Run' + Run_num + fluxtop + filetype, 'w')
-    BottomFlux_File = open(str(Rayleigh)+'Run' + Run_num + fluxbottom + filetype, 'w')
+#     #Declaring file name 
+#     Reynolds_File = open(str(Rayleigh)+"Run" + Run_num + reyrey + filetype, 'w') 
+#     TopFlux_File = open(str(Rayleigh)+'Run' + Run_num + fluxtop + filetype, 'w')
+#     BottomFlux_File = open(str(Rayleigh)+'Run' + Run_num + fluxbottom + filetype, 'w')
 
 
-    #Writing in file
-    for i in range(len(Reynolds_list)):
-        Reynolds_File.write(str(time_list[i]) + ', ' + str(Reynolds_list[i] ) + '\n')
+#     #Writing in file
+#     for i in range(len(Reynolds_list)):
+#         Reynolds_File.write(str(time_list[i]) + ', ' + str(Reynolds_list[i] ) + '\n')
         
-    for i in range(len(heatflux_top)):
-        TopFlux_File.write(str(time_list[i]) + ', ' + str(heatflux_top[i] ) + '\n')
+#     for i in range(len(heatflux_top)):
+#         TopFlux_File.write(str(time_list[i]) + ', ' + str(heatflux_top[i] ) + '\n')
 
-    for i in range(len(heatflux_bottom)):
-        BottomFlux_File.write(str(time_list[i]) + ', ' + str(heatflux_bottom[i] ) + '\n')
+#     for i in range(len(heatflux_bottom)):
+#         BottomFlux_File.write(str(time_list[i]) + ', ' + str(heatflux_bottom[i] ) + '\n')
 
-    # Reynolds_File.close()
-    TopFlux_File.close()
-    BottomFlux_File.close()
-    # plt.plot(time_list, Reynolds_list)
-    # plt.title('Simulated Maximum Reynolds Number in Time-domain' + '\n' + 'Ra=' + str(Rayleigh), fontsize = 10)
-    # plt.xlabel('TIme')
-    # plt.ylabel('Reynolds [Re]')
-    # plt.show()
+#     # Reynolds_File.close()
+#     TopFlux_File.close()
+#     BottomFlux_File.close()
+#     # plt.plot(time_list, Reynolds_list)
+#     # plt.title('Simulated Maximum Reynolds Number in Time-domain' + '\n' + 'Ra=' + str(Rayleigh), fontsize = 10)
+#     # plt.xlabel('TIme')
+#     # plt.ylabel('Reynolds [Re]')
+#     # plt.show()
