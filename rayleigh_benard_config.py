@@ -13,7 +13,8 @@ Options:
     --state=<string>  load directory for previous state [default: none]
 
 """
-
+from docopt import docopt
+from configparser import ConfigParser
 import numpy as np
 import dedalus.public as d3
 import logging
@@ -22,28 +23,28 @@ import mpi4py
 import matplotlib.pyplot as plt
 from docopt import docopt
 import sys
-
+import os 
+path = os.path.dirname(os.path.abspath(__file__))
+configfile = path +"/options.cfg"
 args = docopt(__doc__)
-
+config = ConfigParser()
+config.read(str(configfile))
 CW = mpi4py.MPI.COMM_WORLD
 ncores = CW.size
-#Multi-Rayleigh Runs
-# Ra_list = [1e4,2e4,4e4,1e5,2e5,4e5,1e6,2e6,]
-# for index in Ra_list:
 # Parameters
-Lx, Lz = float(args['--lx']), 1
-n = 6 #power of two 
+Lx, Lz = config.getfloat('param', 'Lx'), config.getfloat('param', 'Lz')
+n = config.getint('param', 'n') #power of two 
 Nz_prime = 2**n
 Nx_prime = 4 * Nz_prime #float(args['--lx']) 
 Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
-Rayleigh = float(args['--ra']) #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
-Prandtl = float(args['--pr'])
+Rayleigh = config.getfloat('param', 'Ra') #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
+Prandtl = config.getfloat('param', 'Pr')
 dealias = 3/2
-stop_sim_time = float(args['--st'])
+stop_sim_time = config.getfloat('param', 'st')
 timestepper = d3.RK222
-max_timestep = 0.125
+max_timestep = config.getfloat('param', 'maxtimestep')
 dtype = np.float64
-
+name = config.get('param', 'name')
 # Bases
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
@@ -63,12 +64,12 @@ tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
 # Hollow Substitutions
 kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
 
-sig = 30 
-e = 0.1
-Tbump = 0.0
+sig = config.getfloat('param', 'sig')
+e = config.getfloat('param', 'e')
+Tbump = config.getfloat('param', 'Tbump')
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
-A = 0
+A = config.getfloat('param', 'A')
 pi = np.pi
 
 koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
@@ -109,7 +110,7 @@ solver = problem.build_solver(timestepper)
 solver.stop_sim_time = stop_sim_time
 
 # Initial conditions
-state = args['--state']
+state = config.get('param', 'state')
 if (state == 'none' ):
     b.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise intal parameters~
     b['g'] *= z * (Lz - z) # Damp noise at walls
@@ -119,16 +120,16 @@ else:
     solver.sim_time = 0.0
 
 #Checkpoints 
-checkpoints = solver.evaluator.add_file_handler(args['--sn']+'checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
+checkpoints = solver.evaluator.add_file_handler(name+'checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
 checkpoints.add_tasks(solver.state, layout='g')
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler(args['--sn'], sim_dt=0.05, max_writes=50, mode = 'overwrite')
+snapshots = solver.evaluator.add_file_handler(name, sim_dt=0.05, max_writes=50, mode = 'overwrite')
 snapshots.add_task(b, name='buoyancy')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 
 #Profiles 
-profiles = solver.evaluator.add_file_handler(args['--sn']+'_profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
+profiles = solver.evaluator.add_file_handler(name+'_profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
 
 # Flow properties
 flow = d3.GlobalFlowProperty(solver, cadence=10)

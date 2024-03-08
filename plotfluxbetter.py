@@ -18,6 +18,9 @@ timestepper = d3.RK222
 max_timestep = 0.125
 dtype = np.float64
 
+#Condition inputs
+name = input('Type the rayleigh number prefix substring')
+user_input = input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
 # Bases
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
@@ -26,44 +29,80 @@ zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 x, z = dist.local_grids(xbasis, zbasis)
 import h5py
 filename = "file.hdf5"
-prof= [r"diffusive flux"]
+filenames = ["profiles_s3.h5",] #delete last profile
+filenames = [name + '_' + filename for filename in filenames]
 data_dict = dict()
-for task in prof: 
-    data_dict[task] = None
-# data_list = []
-# mean_list= []
-# [r"diffusive flux",
-# r"kinetic energy in x",
-# r"kinetic energy in z"
-# ,r"mean x velocity"
-# ,r"mean z velocity",
-# r"mean temperature profile",
-# r"entrsophy",
-# r"X diffusive flux",
-# r"convective flux"]
-filenames = ["profiles_s4.h5","profiles_s5.h5"]
-index = 0
-for file in filenames: 
-    with h5py.File(path + '/profiles/'+file, "r") as f:
-        for task in data_dict.keys():
-            data = f['tasks'][task][()].squeeze()
-            # times = f['scales']['sim_time'][()].squeeze()
-            # print(times)
-            size = np.shape(data)
-            index += size[0] 
-            task_mean= np.sum(data, axis = 0)
-            # print(data.shape())
-            print(type(data_dict[task]))
-            if isinstance(data_dict[task], np.ndarray):
-                data_dict[task] += task_mean 
-            else:
-                data_dict[task] = task_mean 
-for task in data_dict.keys():
-    plt.plot(z.squeeze(),data_dict[task]/(index))
+prof = [r"diffusive flux",
+r"kinetic energy in x",
+r"kinetic energy in z"
+,r"mean x velocity"
+,r"mean z velocity",
+r"mean temperature profile",
+r"entrsophy",
+r"X diffusive flux",
+r"convective flux"]
+
+flux_prof = [r"diffusive flux",
+             r"convective flux"]
+if user_input == 'Full':
+    for task in prof: 
+        data_dict[task] = None
+    index = 0
+    for file in filenames: 
+        with h5py.File(path + "/"+name+"_profiles/"+file, "r") as f:
+            for task in data_dict.keys():
+                data = f['tasks'][task][()].squeeze()
+                times = f['scales']['sim_time'][()].squeeze()
+                print(times)
+                size = np.shape(data)
+                index += size[0] 
+                task_mean = np.sum(data, axis = 0)
+                # print(data.shape())
+                if isinstance(data_dict[task], np.ndarray):
+                    data_dict[task] += task_mean 
+                else:
+                    data_dict[task] = task_mean 
+    for task in data_dict.keys():
+        plt.plot(z.squeeze(), data_dict[task]/(index))
+        plt.xlabel('z')
+        plt.ylabel(task)
+        plt.title(task)
+        plt.savefig(path+"/"+name+"_profiles/"+task+'_fig.png')
+        plt.close()            
+
+
+if user_input == "Flux":
+    for task in flux_prof: 
+        data_dict[task] = None
+    index = 0
+    for file in filenames:
+        with h5py.File(path + "/"+name+"_profiles/"+file, "r") as f:
+            for task in data_dict.keys():
+                data = f['tasks'][task][()].squeeze()
+                print(np.shape(data))
+                times = f['scales']['sim_time'][()].squeeze()
+                print(times)
+                size = np.shape(data)
+                print("size = {}".format(size))
+                index += size[0] 
+                task_mean= np.sum(data, axis = 0)
+                # print(data.shape())
+                if isinstance(data_dict[task], np.ndarray):
+                    data_dict[task] += task_mean 
+                else:
+                    data_dict[task] = task_mean
+
+    plt.plot(z.squeeze(),data_dict['convective flux']/(index), label = 'Convective flux')
+    plt.plot(z.squeeze(),data_dict['diffusive flux']/(index), label = 'Diffusive flux')
+    tot_fluxmean =data_dict['convective flux']/(index)+data_dict['diffusive flux']/(index)
+    plt.plot(z.squeeze(),tot_fluxmean, label = 'Total flux')
+    plt.legend(loc = 'upper right')
     plt.xlabel('z')
-    plt.ylabel(task)
-    plt.title(task)
-    plt.savefig(path+"/profiles/"+task+'_fig.png')
+    plt.ylabel("Flux")
+    plt.title("Heat Fluxes Plot")
+    file_name = path+"/"+name+"_profiles/"+"Flux_fig.png"
+    plt.savefig(file_name)
+    print(file_name)
     plt.close()
                 
 
