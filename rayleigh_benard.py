@@ -32,7 +32,7 @@ ncores = CW.size
 # for index in Ra_list:
 # Parameters
 Lx, Lz = float(args['--lx']), 1
-n = 6 #power of two 
+n = 5 #power of two 
 Nz_prime = 2**n
 Nx_prime = 4 * Nz_prime #float(args['--lx']) 
 Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
@@ -41,7 +41,7 @@ Prandtl = float(args['--pr'])
 dealias = 3/2
 stop_sim_time = float(args['--st'])
 timestepper = d3.RK222
-max_timestep = 0.125
+max_timestep = 0.1
 dtype = np.float64
 
 # Bases
@@ -68,7 +68,7 @@ e = 0.1
 Tbump = 0.0
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
-A = 0
+A = 0.5
 pi = np.pi
 
 koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
@@ -141,6 +141,8 @@ profiles.add_task(integ(Reynolds_Num), name = "reynolds_timeaveraged")
 profiles.add_task(integx(u@ez * b), name = 'convective flux') #Convective flux is <w*b>
     #Diffusive Flux
 profiles.add_task(integx(-kappa * grad_b@ez), name = 'diffusive flux') #diffusive flux is <-kappa*dz(b)>
+    #Total Flux
+# profiles.add_task(integ(integx(u@ez * b)+integx(-kappa * grad_b@ez)), name = 'total flux')
 Ke_x = ((u@ex)**2)/2
 profiles.add_task(integx(abs(-kappa * grad_b@ex)), name = 'X diffusive flux')
 
@@ -154,8 +156,8 @@ profiles.add_task(integx(b), name = "buoyancy")
 Ke_z = ((u@ez)**2)/2
 profiles.add_task(integx(Ke_x),name = 'kinetic energy in x')
 profiles.add_task(integx(Ke_z),name = 'kinetic energy in z')
-profiles.add_task(integx(Ke_x),name = 'kinetic energy in x')
-profiles.add_task(integx(Ke_z),name = 'kinetic energy in z')
+profiles.add_task(integ(Ke_x),name = 'kinetic energy in x [whole domain]')
+profiles.add_task(integ(Ke_z),name = 'kinetic energy in z [whole domain]')
 #Mean Temperature Profile 
 profiles.add_task(integx(b),name = 'mean temperature profile')
 
