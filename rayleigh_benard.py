@@ -32,7 +32,7 @@ ncores = CW.size
 # for index in Ra_list:
 # Parameters
 Lx, Lz = float(args['--lx']), 1
-n = 5 #power of two 
+n = 6 #power of two 
 Nz_prime = 2**n
 Nx_prime = 4 * Nz_prime #float(args['--lx']) 
 Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
@@ -50,6 +50,9 @@ dist = d3.Distributor(coords, dtype=dtype)
 xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
 zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 
+integx = lambda arg: d3.Integrate(arg, 'x')
+integ = lambda arg: d3.Integrate(integx(arg), 'z')
+
 # Fields
 p = dist.Field(name='p', bases=(xbasis,zbasis))
 b = dist.Field(name='b', bases=(xbasis,zbasis))
@@ -59,6 +62,7 @@ tau_b1 = dist.Field(name='tau_b1', bases=xbasis)
 tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
 tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
+# b_bar = integx(b) / Lx
 
 # Hollow Substitutions
 kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
@@ -82,8 +86,6 @@ lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
 grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
 
-integx = lambda arg: d3.Integrate(arg, 'x')
-integ = lambda arg: d3.Integrate(integx(arg), 'z')
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
@@ -140,7 +142,7 @@ profiles.add_task(integ(Reynolds_Num), name = "reynolds_timeaveraged")
     #Convective Flux
 profiles.add_task(integx(u@ez * b), name = 'convective flux') #Convective flux is <w*b>
     #Diffusive Flux
-profiles.add_task(integx(-kappa * grad_b@ez), name = 'diffusive flux') #diffusive flux is <-kappa*dz(b)>
+profiles.add_task(integx(-(kappa + koopa)* grad_b@ez), name = 'diffusive flux') #diffusive flux is <-kappa*dz(b)>
     #Total Flux
 # profiles.add_task(integ(integx(u@ez * b)+integx(-kappa * grad_b@ez)), name = 'total flux')
 Ke_x = ((u@ex)**2)/2

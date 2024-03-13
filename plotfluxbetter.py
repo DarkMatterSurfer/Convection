@@ -6,7 +6,7 @@ import sys
 path = os.path.dirname(os.path.abspath(__file__))
 print(path) #independent
 Lx, Lz = float(1), 1
-n = 5 #power of two 
+n = 6#power of two 
 Nz_prime = 2**n
 Nx_prime = float(1) * Nz_prime
 Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
@@ -20,6 +20,8 @@ dtype = np.float64
 #Condition inputs
 name = input('Type the rayleigh number prefix substring')
 user_input = input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
+startinput = input("Please give start profile number:")
+stopinput = input("Please give stop profile number:")
 # Bases
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
@@ -28,7 +30,8 @@ zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 x, z = dist.local_grids(xbasis, zbasis)
 import h5py
 filename = "file.hdf5"
-filenames = ["profiles_s6.h5"] #delete last profile
+# filenames = ["profiles_s11.h5","profiles_s10.h5","profiles_s9.h5","profiles_s8.h5","profiles_s7.h5","profiles_s6.h5","profiles_s5.h5","profiles_s4.h5","profiles_s3.h5","profiles_s2.h5","profiles_s1.h5"] #delete last profile
+filenames = ["profiles_s{}.h5".format(i) for i in range(startinput, stopinput+1)]
 filenames = [name + '_' + filename for filename in filenames]
 print("CHECK FILENAMES")
 data_dict = dict()
