@@ -1,18 +1,4 @@
-"""
-Rayleigh-Benard 2d simulation
 
-Usage:
-    rayleigh_benard.py [--ra=<float> --pr=<float> --st=<float> --lx=<float> --sn=<string> --state=<string>]
-
-Options:
-    --ra=<float>  rayleigh number [default: 2e6]
-    --pr=<float>  prandtl number [default: 1]
-    --st=<float>  stop_sim [default: 50]
-    --lx=<float>  lx [default: 1]
-    --sn=<string>  output directory for snapshots [default: snapshots]
-    --state=<string>  load directory for previous state [default: none]
-
-"""
 from docopt import docopt
 from configparser import ConfigParser
 import numpy as np
@@ -25,8 +11,14 @@ from docopt import docopt
 import sys
 import os 
 path = os.path.dirname(os.path.abspath(__file__))
-configfile = path +"/options.cfg"
-args = docopt(__doc__)
+# configfile = path +"/options.cfg"
+# args = docopt(__doc__)
+if len(sys.argv) < 2:
+    print('please provide config file')
+    raise
+else:
+    configfile = sys.argv[1]
+
 config = ConfigParser()
 config.read(str(configfile))
 CW = mpi4py.MPI.COMM_WORLD
@@ -35,8 +27,9 @@ ncores = CW.size
 Lx, Lz = config.getfloat('param', 'Lx'), config.getfloat('param', 'Lz')
 n = config.getint('param', 'n') #power of two 
 Nz_prime = 2**n
-Nx_prime = 4 * Nz_prime #float(args['--lx']) 
-Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
+Nx_prime = config.getint('param','aspect') * Nz_prime #float(args['--lx']) 
+Nx, Nz = Nx_prime, Nz_prime
+print((Nx,Nz))#Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
 Rayleigh = config.getfloat('param', 'Ra') #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
 Prandtl = config.getfloat('param', 'Pr')
 dealias = 3/2
@@ -120,16 +113,16 @@ else:
     solver.sim_time = 0.0
 
 #Checkpoints 
-checkpoints = solver.evaluator.add_file_handler(name+'checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
+checkpoints = solver.evaluator.add_file_handler(name+'/checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
 checkpoints.add_tasks(solver.state, layout='g')
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler(name, sim_dt=0.05, max_writes=50, mode = 'overwrite')
+snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
 snapshots.add_task(b, name='buoyancy')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 
 #Profiles 
-profiles = solver.evaluator.add_file_handler(name+'_profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
+profiles = solver.evaluator.add_file_handler(name+'/profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
 
 # Flow properties
 flow = d3.GlobalFlowProperty(solver, cadence=10)
@@ -155,8 +148,8 @@ profiles.add_task(integx(b), name = "buoyancy")
 Ke_z = ((u@ez)**2)/2
 profiles.add_task(integx(Ke_x),name = 'kinetic energy in x')
 profiles.add_task(integx(Ke_z),name = 'kinetic energy in z')
-profiles.add_task(integx(Ke_x),name = 'kinetic energy in x')
-profiles.add_task(integx(Ke_z),name = 'kinetic energy in z')
+profiles.add_task(integ(Ke_x),name = 'kinetic energy in x [whole domain]')
+profiles.add_task(integ(Ke_z),name = 'kinetic energy in z [whole domain]')
 #Mean Temperature Profile 
 profiles.add_task(integx(b),name = 'mean temperature profile')
 

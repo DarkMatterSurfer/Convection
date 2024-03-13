@@ -1,14 +1,4 @@
-"""
-Plot 2D cartesian snapshots.
 
-Usage:
-    plot_snapshots.py <files>... [--output=<dir> --lx=<float>]
-
-Options:
-    --output=<dir>  Output directory [default: ./frames]
-    --lx=<float>  Output directory [default: 4]
-
-"""
 
 import h5py
 import numpy as np
@@ -16,21 +6,37 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from dedalus.extras import plot_tools
-
-
+import os 
+from docopt import docopt
+from configparser import ConfigParser
+import sys
+from glob import glob
+path = os.path.dirname(os.path.abspath(__file__))
+if len(sys.argv) < 2:
+    print('please provide config file')
+    raise
+else:
+    configfile = sys.argv[1]
+config = ConfigParser()
+config.read(str(configfile))
+global lx
+lx = config.getfloat('param','Lx')
+lz = config.getfloat('param','Lz')
+name = config.get('param', 'name')
+Ra = config.getfloat('param','Ra')
 def main(filename, start, count, output):
     """Save plot of specified tasks for given range of analysis writes."""
 
     # Plot settings
     tasks = ['buoyancy', 'vorticity']
-    scale = 1.5
+    scale = 3
     dpi = 200
-    title_func = lambda sim_time: 't = {:.3f}'.format(sim_time)
+    title_func = lambda sim_time:'Ra= '+f"{(Ra):.1e}" +' t = {:.3f}'.format(sim_time)
     savename_func = lambda write: 'write_{:06}.png'.format(write)
 
     # Layout
-    nrows, ncols = 2, 1
-    image = plot_tools.Box(lx, 1)
+    nrows, ncols = 1, 2
+    image = plot_tools.Box(lx, lz)
     pad = plot_tools.Frame(0.3, 0, 0, 0)
     margin = plot_tools.Frame(0.2, 0.1, 0, 0)
 
@@ -68,14 +74,12 @@ if __name__ == "__main__":
     from dedalus.tools import post
     from dedalus.tools.parallel import Sync
 
-    args = docopt(__doc__)
-    global lx
-    lx = float(args['--lx'])
-    output_path = pathlib.Path(args['--output']).absolute()
+    
+    output_path = pathlib.Path(path+"/"+name+"/frames").absolute()
     # Create output directory if needed
     with Sync() as sync:
         if sync.comm.rank == 0:
             if not output_path.exists():
                 output_path.mkdir()
-    post.visit_writes(args['<files>'], main, output=output_path)
+    post.visit_writes(glob(path+"/"+name+"/snapshots/*.h5"), main, output=output_path)
 

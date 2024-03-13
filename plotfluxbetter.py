@@ -1,24 +1,40 @@
-import os 
+from docopt import docopt
+from configparser import ConfigParser
 import numpy as np
-import matplotlib.pyplot as plt
 import dedalus.public as d3
+import logging
+logger = logging.getLogger(__name__)
+import mpi4py
+import matplotlib.pyplot as plt
+from docopt import docopt
 import sys
+import os 
 path = os.path.dirname(os.path.abspath(__file__))
 print(path) #independent
 Lx, Lz = float(1), 1
-n = 6#power of two 
+if len(sys.argv) < 2:
+    print('please provide config file')
+    raise
+else:
+    configfile = sys.argv[1]
+
+config = ConfigParser()
+config.read(str(configfile))
+# Parameters
+Lx, Lz = config.getfloat('param', 'Lx'), config.getfloat('param', 'Lz')
+n = config.getint('param', 'n') #power of two 
 Nz_prime = 2**n
-Nx_prime = float(1) * Nz_prime
+Nx_prime = 4 * Nz_prime #float(args['--lx']) 
 Nx, Nz = Nx_prime, Nz_prime #Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
-Rayleigh = float(2e5) #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
-Prandtl = float(1)
+Rayleigh = config.getfloat('param', 'Ra') #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
+Prandtl = config.getfloat('param', 'Pr')
 dealias = 3/2
-stop_sim_time = float(80)
+stop_sim_time = config.getfloat('param', 'st')
 timestepper = d3.RK222
-max_timestep = 0.1
+max_timestep = config.getfloat('param', 'maxtimestep')
 dtype = np.float64
+name = config.get('param', 'name')
 #Condition inputs
-name = input('Type the rayleigh number prefix substring')
 user_input = input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
 startinput = input("Please give start profile number:")
 stopinput = input("Please give stop profile number:")
@@ -31,8 +47,9 @@ x, z = dist.local_grids(xbasis, zbasis)
 import h5py
 filename = "file.hdf5"
 # filenames = ["profiles_s11.h5","profiles_s10.h5","profiles_s9.h5","profiles_s8.h5","profiles_s7.h5","profiles_s6.h5","profiles_s5.h5","profiles_s4.h5","profiles_s3.h5","profiles_s2.h5","profiles_s1.h5"] #delete last profile
-filenames = ["profiles_s{}.h5".format(i) for i in range(startinput, stopinput+1)]
-filenames = [name + '_' + filename for filename in filenames]
+filenames = ["profiles_s{}.h5".format(i) for i in range(int(startinput), int(stopinput)+1)]
+print(filenames)
+
 print("CHECK FILENAMES")
 data_dict = dict()
 prof = [r"diffusive flux",
@@ -51,7 +68,7 @@ if user_input == 'Full':
         data_dict[task] = None
     index = 0
     for file in filenames: 
-        with h5py.File(path + "/"+name+"_profiles/"+file, "r") as f:
+        with h5py.File(path + "/"+name+"/profiles/"+file, "r") as f:
             for task in data_dict.keys():
                 data = f['tasks'][task][()].squeeze()
                 times = f['scales']['sim_time'][()].squeeze()
@@ -70,21 +87,22 @@ if user_input == 'Full':
             plt.plot(z.squeeze(), data_dict[task]/(index))
             plt.xlabel('z')
             plt.ylabel(task)
-            plt.title(task+ " at Ra= "+name)
-            plt.savefig(path+"/"+name+"_profiles/"+task+'_fig.png')
+            Rayleigh = config.getfloat('param', 'Ra')
+            plt.title("Heat Fluxes Plot Ra= "+ str(Rayleigh))
+            plt.savefig(path+"/"+name+"/"+task+'_fig.png')
             plt.close()
     elif plotornot == "Archive":
         archname = input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
         if archname == "Bump":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
-                        savef = open((path+"/"+name+"_profiles/"+task+'_dataBUMP.csv'), "a")
+                        savef = open((path+"/"+name+"/"+task+'_dataBUMP.csv'), "a")
                         savef.write(str(val))
                         savef.write("\n")         
         if archname == "":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
-                        savef = open((path+"/"+name+"_profiles/"+task+'_dataBUMP.csv'), "a")
+                        savef = open((path+"/"+name+"/"+task+'_dataBUMP.csv'), "a")
                         savef.write(str(val))
                         savef.write("\n")  
 if user_input == "Flux":
@@ -92,7 +110,7 @@ if user_input == "Flux":
         data_dict[task] = None
     index = 0
     for file in filenames:
-        with h5py.File(path + "/"+name+"_profiles/"+file, "r") as f:
+        with h5py.File(path + "/"+name+"/profiles/"+file, "r") as f:
             for task in data_dict.keys():
                 data = f['tasks'][task][()].squeeze()
                 print(np.shape(data))
@@ -117,8 +135,9 @@ if user_input == "Flux":
             plt.legend(loc = 'upper right')
             plt.xlabel('z')
             plt.ylabel("Flux")
-            plt.title("Heat Fluxes Plot Ra= "+name)
-            file_name = path+"/"+name+"_profiles/"+name+"_Flux_fig.png"
+            Rayleigh = config.getfloat('param', 'Ra')
+            plt.title("Heat Fluxes Plot Ra= "+ str(Rayleigh))
+            file_name = path+"/"+name+"/"+"Flux_fig.png"
             plt.savefig(file_name)
             print(file_name)
             plt.close()
@@ -127,13 +146,13 @@ if user_input == "Flux":
         if archname == "Bump":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
-                        savef = open((path+"/"+name+"_profiles/"+task+'_dataBUMP.csv'), "a")
+                        savef = open((path+"/"+name+"/"+task+'_dataBUMP.csv'), "a")
                         savef.write(str(val))
                         savef.write("\n")         
         if archname == "":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
-                        savef = open((path+"/"+name+"_profiles/"+task+'_dataBUMP.csv'), "a")
+                        savef = open((path+"/"+name+"/"+task+'_dataBUMP.csv'), "a")
                         savef.write(str(val))
                         savef.write("\n")
 
