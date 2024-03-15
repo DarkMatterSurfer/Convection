@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from docopt import docopt
 import sys
 import os 
+import h5py
+import csv
 path = os.path.dirname(os.path.abspath(__file__))
 print(path) #independent
 Lx, Lz = float(1), 1
@@ -36,19 +38,21 @@ dtype = np.float64
 name = config.get('param', 'name')
 #Condition inputs
 user_input = input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
-startinput = input("Please give start profile number:")
-stopinput = input("Please give stop profile number:")
+if user_input == "Full" or user_input == "Flux":
+    startinput = input("Please give start profile number:")
+    stopinput = input("Please give stop profile number:")
+    filename = "file.hdf5"
+    # filenames = ["profiles_s11.h5","profiles_s10.h5","profiles_s9.h5","profiles_s8.h5","profiles_s7.h5","profiles_s6.h5","profiles_s5.h5","profiles_s4.h5","profiles_s3.h5","profiles_s2.h5","profiles_s1.h5"] #delete last profile
+    filenames = ["profiles_s{}.h5".format(i) for i in range(int(startinput), int(stopinput)+1)]
+    print(filenames)
+
 # Bases
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
 xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
 zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 x, z = dist.local_grids(xbasis, zbasis)
-import h5py
-filename = "file.hdf5"
-# filenames = ["profiles_s11.h5","profiles_s10.h5","profiles_s9.h5","profiles_s8.h5","profiles_s7.h5","profiles_s6.h5","profiles_s5.h5","profiles_s4.h5","profiles_s3.h5","profiles_s2.h5","profiles_s1.h5"] #delete last profile
-filenames = ["profiles_s{}.h5".format(i) for i in range(int(startinput), int(stopinput)+1)]
-print(filenames)
+
 
 print("CHECK FILENAMES")
 data_dict = dict()
@@ -102,7 +106,7 @@ if user_input == 'Full':
         if archname == "":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
-                        savef = open((path+"/"+name+"/"+task+'_dataBUMP.csv'), "a")
+                        savef = open((path+"/"+name+"/"+task+'_data.csv'), "a")
                         savef.write(str(val))
                         savef.write("\n")  
 if user_input == "Flux":
@@ -152,8 +156,42 @@ if user_input == "Flux":
         if archname == "":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
-                        savef = open((path+"/"+name+"/"+task+'_dataBUMP.csv'), "a")
+                        savef = open((path+"/"+name+"/"+task+'_data.csv'), "a")
                         savef.write(str(val))
                         savef.write("\n")
-
-
+if user_input == "Combined":
+    nobump = []
+    bump = []
+    nobump_archive = "/home/brogers/Convection/1e6nobump/convective flux_data.csv"
+    bump_archive = "/home/brogers/Convection/1e6_profiles/convective flux_dataBUMP.csv"
+    archive_data = [nobump_archive,bump_archive]
+    print(range(0,len(archive_data)-1))
+    for i in range(0,len(archive_data)):
+        if i == 0:
+            #Read no bump csv convection file
+            with open(archive_data[i]) as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    nobump.append(row[0])
+            print("This is no bump data for Ra="+str(Rayleigh)+":\n\n\n", nobump)
+            print("\n\n")
+        if i == 1:
+            #Read bump csv convection file
+            with open(archive_data[i]) as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    bump.append(row[0])
+            print("This is bump data for Ra="+str(Rayleigh)+" :\n\n\n", bump)
+            print("\n\n")
+    print(type(nobump[0]))
+    print(type(bump[0]))
+    #Plotting
+    plt.plot(z.squeeze(),nobump, label = 'Norm.')
+    plt.plot(z.squeeze(),bump, label = 'Bump')
+    plt.title("Combined Convective Flux Plot Ra= "+str(Rayleigh))
+    plt.legend(loc = 'upper right')
+    plt.xlabel('z')
+    plt.ylabel("Flux")
+    file_name = path+"/"+name+"/"+"CombinedConvective_fig.png"
+    plt.savefig(file_name)
+    plt.show()
