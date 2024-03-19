@@ -37,7 +37,8 @@ max_timestep = config.getfloat('param', 'maxtimestep')
 dtype = np.float64
 name = config.get('param', 'name')
 #Condition inputs
-user_input = input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
+user_input = "Combined"
+#input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
 if user_input == "Full" or user_input == "Flux":
     startinput = input("Please give start profile number:")
     stopinput = input("Please give stop profile number:")
@@ -162,8 +163,8 @@ if user_input == "Flux":
 if user_input == "Combined":
     nobump = []
     bump = []
-    nobump_archive = "/home/brogers/Convection/1e6nobump/convective flux_data.csv"
-    bump_archive = "/home/brogers/Convection/1e6_profiles/convective flux_dataBUMP.csv"
+    nobump_archive = path+"/"+name+"/convective flux_data.csv"
+    bump_archive = path+"/"+name+"/convective flux_dataBUMP.csv"
     archive_data = [nobump_archive,bump_archive]
     print(range(0,len(archive_data)-1))
     for i in range(0,len(archive_data)):
