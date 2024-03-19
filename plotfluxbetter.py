@@ -96,8 +96,9 @@ if user_input == 'Full':
             plt.title("Heat Fluxes Plot Ra= "+ str(Rayleigh))
             plt.savefig(path+"/"+name+"/"+task+'_fig.png')
             plt.close()
-    elif plotornot == "Archive":
-        archname = input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
+    if plotornot == "Archive":
+        archname = "testofscript"
+        #input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
         if archname == "Bump":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
@@ -146,8 +147,10 @@ if user_input == "Flux":
             plt.savefig(file_name)
             print(file_name)
             plt.close()
-    elif plotornot == "Archive":
-        archname = input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
+    #Making csv files for profiles
+    if plotornot == "Archive":
+        archname = "testofscript"
+        #input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
         if archname == "Bump":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
