@@ -86,7 +86,8 @@ if user_input == 'Full':
                     data_dict[task] += task_mean 
                 else:
                     data_dict[task] = task_mean 
-    plotornot = input("Please type what function you would like to perform. Type /Plot/ to plot | Type /Archive/ to save data to external file:")
+    plotornot = "Plot"
+    #input("Please type what function you would like to perform. Type /Plot/ to plot | Type /Archive/ to save data to external file:")
     if plotornot == "Plot":
         for task in data_dict.keys():
             plt.plot(z.squeeze(), data_dict[task]/(index))
@@ -131,7 +132,8 @@ if user_input == "Flux":
                     data_dict[task] += task_mean 
                 else:
                     data_dict[task] = task_mean
-    plotornot = input("Please type what function you would like to perform. Type /Plot/ to plot | Type /Archive/ to save data to external file:")
+    plotornot = "Archive"
+    #input("Please type what function you would like to perform. Type /Plot/ to plot | Type /Archive/ to save data to external file:")
     if plotornot == "Plot":
         for task in data_dict.keys():
             plt.plot(z.squeeze(),data_dict['convective flux']/(index), label = 'Convective flux')
@@ -149,53 +151,59 @@ if user_input == "Flux":
             plt.close()
     #Making csv files for profiles
     if plotornot == "Archive":
-        archname = "testofscript"
+        archname = ""
         #input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
         if archname == "Bump":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
                         savef = open((path+"/"+name+"/"+task+'_dataBUMP.csv'), "a")
-                        savef.write(str(val))
+                        savef.write(str(val/index))
                         savef.write("\n")         
         if archname == "":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
                         savef = open((path+"/"+name+"/"+task+'_data.csv'), "a")
-                        savef.write(str(val))
+                        savef.write(str(val/index))
                         savef.write("\n")
 if user_input == "Combined":
     nobump = []
     bump = []
-    nobump_archive = path+"/"+name+"/convective flux_data.csv"
-    bump_archive = path+"/"+name+"/convective flux_dataBUMP.csv"
-    archive_data = [nobump_archive,bump_archive]
+    eff = []
+
+    nobump_archive = path+"/"+name+r"/convective flux_data.csv"
+    bump_archive = path+"/"+"1e6_profiles"+r"/convective flux_dataBUMP.csv"
+    effective_archive = path+"/"+"1e6effective"+r"/convective flux_data.csv"
+    archive_data = [nobump_archive,bump_archive,effective_archive]
     print(range(0,len(archive_data)-1))
     for i in range(0,len(archive_data)):
         if i == 0:
             #Read no bump csv convection file
-            with open(archive_data[i]) as csvfile:
-                reader = csv.reader(csvfile)
-                for row in reader:
-                    nobump.append(row[0])
+            # with archive_data[i] as csvfile:
+            nobump = np.loadtxt(nobump_archive, delimiter=None, dtype=float)
             print("This is no bump data for Ra="+str(Rayleigh)+":\n\n\n", nobump)
             print("\n\n")
         if i == 1:
             #Read bump csv convection file
-            with open(archive_data[i]) as csvfile:
-                reader = csv.reader(csvfile)
-                for row in reader:
-                    bump.append(row[0])
+            bump = np.loadtxt(bump_archive, delimiter=None, dtype=float)
             print("This is bump data for Ra="+str(Rayleigh)+" :\n\n\n", bump)
             print("\n\n")
-    print(type(nobump[0]))
-    print(type(bump[0]))
+        if i == 2:
+            #Read effective csv convection file
+            eff = np.loadtxt(effective_archive, delimiter=None, dtype=float)
+            print("This is effective rayleigh data for Ra="+str(Rayleigh/0.5)+" :\n\n\n", bump)
+            print("\n\n")
+    # print(type(nobump[0]))
+    # print(type(bump[0]))
     #Plotting
     plt.plot(z.squeeze(),nobump, label = 'Norm.')
+    plt.plot(z.squeeze(),eff,label="Eff. Ra= 2e6")
+    x, z = dist.local_grids(xbasis, zbasis,scales = 2)
     plt.plot(z.squeeze(),bump, label = 'Bump')
     plt.title("Combined Convective Flux Plot Ra= "+str(Rayleigh))
     plt.legend(loc = 'upper right')
     plt.xlabel('z')
     plt.ylabel("Flux")
-    file_name = path+"/"+name+"/"+"CombinedConvective_fig.png"
+    file_name = path+"/"+name+"/"+str(Rayleigh)+"CombinedConvective_fig.png"
     plt.savefig(file_name)
-    plt.show()
+    print(file_name)
+    plt.close()

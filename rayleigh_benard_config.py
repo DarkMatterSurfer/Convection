@@ -38,6 +38,7 @@ timestepper = d3.RK222
 max_timestep = config.getfloat('param', 'maxtimestep')
 dtype = np.float64
 name = config.get('param', 'name')
+koopa1D= config.getboolean('param','koopa1D')
 # Bases
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
@@ -53,7 +54,8 @@ tau_b1 = dist.Field(name='tau_b1', bases=xbasis)
 tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
 tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
-
+integx = lambda arg: d3.Integrate(arg, 'x')
+integ = lambda arg: d3.Integrate(integx(arg), 'z')
 # Hollow Substitutions
 kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
 
@@ -62,9 +64,12 @@ e = config.getfloat('param', 'e')
 Tbump = config.getfloat('param', 'Tbump')
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
+if koopa1D == True: 
+    Tplus = integx(Tplus/Lx)
+    Tminus = integx(Tminus/Lx)
+
 A = config.getfloat('param', 'A')
 pi = np.pi
-
 koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
 
 
@@ -76,8 +81,7 @@ lift = lambda A: d3.Lift(A, lift_basis, -1)
 grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
 grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
 
-integx = lambda arg: d3.Integrate(arg, 'x')
-integ = lambda arg: d3.Integrate(integx(arg), 'z')
+
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
