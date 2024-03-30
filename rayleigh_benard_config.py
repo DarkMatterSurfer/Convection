@@ -136,11 +136,11 @@ profiles.add_task(integx(Reynolds_Num), name = "reynolds")
 profiles.add_task(integ(Reynolds_Num), name = "reynolds_timeaveraged")
 #Fluxes
     #Convective Flux
-profiles.add_task(integx(u@ez * b), name = 'convective flux') #Convective flux is <w*b>
+profiles.add_task(integx(u@ez * b), name = 'convectiveflx') #Convective flux is <w*b>
     #Diffusive Flux
-profiles.add_task(integx(-kappa * grad_b@ez), name = 'diffusive flux') #diffusive flux is <-kappa*dz(b)>
+profiles.add_task(integx(-(kappa + koopa)* grad_b@ez), name = 'diffusiveflx') #diffusive flux is <-kappa*dz(b)>
 Ke_x = ((u@ex)**2)/2
-profiles.add_task(integx(abs(-kappa * grad_b@ex)), name = 'X diffusive flux')
+profiles.add_task(integx(abs(-(kappa + koopa)* grad_b@ex)), name = 'Xdiff')
 
 #Nusselt Number
 Nusselt =(integ(u@ez*b)+(integ(-kappa * grad_b@ez)))/integ(-kappa * grad_b@ez)
@@ -150,16 +150,16 @@ profiles.add_task(Nusselt, name = "Nusselt")
 profiles.add_task(integx(b), name = "buoyancy")
 #Kinetic Energy
 Ke_z = ((u@ez)**2)/2
-profiles.add_task(integx(Ke_x),name = 'kinetic energy in x')
-profiles.add_task(integx(Ke_z),name = 'kinetic energy in z')
-profiles.add_task(integ(Ke_x),name = 'kinetic energy in x [whole domain]')
-profiles.add_task(integ(Ke_z),name = 'kinetic energy in z [whole domain]')
+profiles.add_task(integx(Ke_x),name = 'kex')
+profiles.add_task(integx(Ke_z),name = 'kez')
+profiles.add_task(integ(Ke_x),name = 'kex_whole')
+profiles.add_task(integ(Ke_z),name = 'kez_whole')
 #Mean Temperature Profile 
-profiles.add_task(integx(b),name = 'mean temperature profile')
+profiles.add_task(integx(b),name = 'mean_temp')
 
 # Velocities
-profiles.add_task(integx(u@ex), name = 'mean x velocity')
-profiles.add_task(integx(u@ez), name = 'mean z velocity')
+profiles.add_task(integx(u@ex), name = 'mean_u@x')
+profiles.add_task(integx(u@ez), name = 'mean_u@z')
 
 #Enstrophy
 vort = d3.div(d3.skew(u))

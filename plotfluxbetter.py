@@ -37,8 +37,7 @@ max_timestep = config.getfloat('param', 'maxtimestep')
 dtype = np.float64
 name = config.get('param', 'name')
 #Condition inputs
-user_input = "Combined"
-#input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
+user_input = input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
 if user_input == "Full" or user_input == "Flux":
     startinput = input("Please give start profile number:")
     stopinput = input("Please give stop profile number:")
@@ -57,17 +56,17 @@ x, z = dist.local_grids(xbasis, zbasis)
 
 print("CHECK FILENAMES")
 data_dict = dict()
-prof = [r"diffusive flux",
-r"kinetic energy in x",
-r"kinetic energy in z"
-,r"mean x velocity"
-,r"mean z velocity",
-r"mean temperature profile",
+prof = [r"diffusiveflx",
+r"kex",
+r"kez"
+,r"mean_u@x"
+,r"mean_u@z",
+r"mean_temp",
 r"entrsophy",
-r"X diffusive flux",
-r"convective flux",r"reynolds"]
-flux_prof = [r"diffusive flux",
-             r"convective flux"]
+r"Xdiff",
+r"convectiveflx",r"reynolds"]
+flux_prof = [r"diffusiveflx",
+             r"convectiveflx"]
 if user_input == 'Full':
     for task in prof: 
         data_dict[task] = None
@@ -86,15 +85,18 @@ if user_input == 'Full':
                     data_dict[task] += task_mean 
                 else:
                     data_dict[task] = task_mean 
-    plotornot = "Plot"
-    #input("Please type what function you would like to perform. Type /Plot/ to plot | Type /Archive/ to save data to external file:")
+    plotornot = input("Please type what function you would like to perform. Type /Plot/ to plot | Type /Archive/ to save data to external file:")
     if plotornot == "Plot":
         for task in data_dict.keys():
             plt.plot(z.squeeze(), data_dict[task]/(index))
             plt.xlabel('z')
             plt.ylabel(task)
             Rayleigh = config.getfloat('param', 'Ra')
-            plt.title("Heat Fluxes Plot Ra= "+ str(Rayleigh))
+            title_input = input("Provide string literal for plot for "+task+"plot:")
+            if title_input == "":
+                plt.title(task+" Plot Ra= "+ str(Rayleigh))
+            else:
+                plt.title(title_input+" Plot Ra= "+ str(Rayleigh))
             plt.savefig(path+"/"+name+"/"+task+'_fig.png')
             plt.close()
     if plotornot == "Archive":
@@ -132,27 +134,26 @@ if user_input == "Flux":
                     data_dict[task] += task_mean 
                 else:
                     data_dict[task] = task_mean
-    plotornot = "Archive"
-    #input("Please type what function you would like to perform. Type /Plot/ to plot | Type /Archive/ to save data to external file:")
+    plotornot = input("Please type what function you would like to perform. Type /Plot/ to plot | Type /Archive/ to save data to external file:")
     if plotornot == "Plot":
         for task in data_dict.keys():
-            plt.plot(z.squeeze(),data_dict['convective flux']/(index), label = 'Convective flux')
-            plt.plot(z.squeeze(),data_dict['diffusive flux']/(index), label = 'Diffusive flux')
-            tot_fluxmean =data_dict['convective flux']/(index)+data_dict['diffusive flux']/(index)
+            plt.plot(z.squeeze(),data_dict['convectiveflx']/(index), label = 'Convective flux')
+            plt.plot(z.squeeze(),data_dict['diffusiveflx']/(index), label = 'Diffusive flux')
+            tot_fluxmean =data_dict['convectiveflx']/(index)+data_dict['diffusiveflx']/(index)
             plt.plot(z.squeeze(),tot_fluxmean, label = 'Total flux')
             plt.legend(loc = 'upper right')
             plt.xlabel('z')
             plt.ylabel("Flux")
             Rayleigh = config.getfloat('param', 'Ra')
-            plt.title("Heat Fluxes Plot Ra= "+ str(Rayleigh))
+            title=input("Give title /Title of Heat Fluxes/:")
+            plt.title(title+"for Ra= "+ str(Rayleigh))
             file_name = path+"/"+name+"/"+"Flux_fig.png"
             plt.savefig(file_name)
             print(file_name)
             plt.close()
     #Making csv files for profiles
     if plotornot == "Archive":
-        archname = ""
-        #input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
+        archname = input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
         if archname == "Bump":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
@@ -169,11 +170,13 @@ if user_input == "Combined":
     nobump = []
     bump = []
     eff = []
-
-    nobump_archive = path+"/"+name+r"/convective flux_data.csv"
-    bump_archive = path+"/"+"1e6_profiles"+r"/convective flux_dataBUMP.csv"
-    effective_archive = path+"/"+"1e6effective"+r"/convective flux_data.csv"
-    archive_data = [nobump_archive,bump_archive,effective_archive]
+    horiz_bump = []
+    nobump_archive = path+"/"+"1e6nobump"+r"/convective flux_data.csv"
+    bump_archive = "/home/brogers/Convection/1e6bump_try2/convectiveflx_dataBUMP.csv" 
+    #path+"/"+"le6bump_try2"+r"/convectiveflx_dataBUMP.csv"
+    effective_archive = path+"/"+"1e6effective"+r"/convectiveflx_data.csv"
+    horiz_archive = path +"/"+name+r"/convectiveflx_dataBUMP.csv"
+    archive_data = [nobump_archive,bump_archive,effective_archive,horiz_archive]
     print(range(0,len(archive_data)-1))
     for i in range(0,len(archive_data)):
         if i == 0:
@@ -192,18 +195,24 @@ if user_input == "Combined":
             eff = np.loadtxt(effective_archive, delimiter=None, dtype=float)
             print("This is effective rayleigh data for Ra="+str(Rayleigh/0.5)+" :\n\n\n", bump)
             print("\n\n")
+        if i == 3:
+            horiz_bump = np.loadtxt(horiz_archive, delimiter=None, dtype=float)
+            print("This is horizontally averaged data for Ra="+str(Rayleigh/0.5)+" :\n\n\n", bump)
+            print("\n\n")
     # print(type(nobump[0]))
     # print(type(bump[0]))
     #Plotting
+    nomRa = input("Nominal Ra:")
     plt.plot(z.squeeze(),nobump, label = 'Norm.')
-    plt.plot(z.squeeze(),eff,label="Eff. Ra= 2e6")
-    x, z = dist.local_grids(xbasis, zbasis,scales = 2)
-    plt.plot(z.squeeze(),bump, label = 'Bump')
-    plt.title("Combined Convective Flux Plot Ra= "+str(Rayleigh))
+    plt.plot(z.squeeze(),eff,"g--",label="Eff. Ra= 2e6")
+    # x, z = dist.local_grids(xbasis, zbasis,scales = 2)
+    plt.plot(z.squeeze(),bump,"r:", linewidth = 3, markersize= 3,label = 'Bump')
+    plt.plot(z.squeeze(),horiz_bump,"yo", markersize = 2, alpha = 0.25, label = 'Horizontal Average')
+    plt.title("Combined Convective Flux Plot for Nominal Ra= "+nomRa)
     plt.legend(loc = 'upper right')
     plt.xlabel('z')
     plt.ylabel("Flux")
-    file_name = path+"/"+name+"/"+str(Rayleigh)+"CombinedConvective_fig.png"
+    file_name = path+"/"+name+"/"+nomRa+"nominal_CombinedConvective_fig.png"
     plt.savefig(file_name)
     print(file_name)
     plt.close()
