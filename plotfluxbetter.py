@@ -35,7 +35,7 @@ stop_sim_time = config.getfloat('param', 'st')
 timestepper = d3.RK222
 max_timestep = config.getfloat('param', 'maxtimestep')
 dtype = np.float64
-name = config.get('param', 'name')
+name = "A0p7Ra1e6" #config.get('param', 'name')
 #Condition inputs
 user_input = input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
 if user_input == "Full" or user_input == "Flux":
@@ -56,15 +56,17 @@ x, z = dist.local_grids(xbasis, zbasis)
 
 print("CHECK FILENAMES")
 data_dict = dict()
-prof = [r"diffusiveflx",
-r"kex",
-r"kez"
-,r"mean_u@x"
-,r"mean_u@z",
-r"mean_temp",
-r"entrsophy",
-r"Xdiff",
-r"convectiveflx",r"reynolds"]
+prof = [
+# r"diffusiveflx",
+# r"kex",
+# r"kez"
+# ,r"mean_u@x"
+# ,r"mean_u@z",
+ r"mean temperature profile",
+# r"entrsophy",
+# r"Xdiff",
+# r"convectiveflx",r"reynolds"
+]
 flux_prof = [r"diffusiveflx",
              r"convectiveflx"]
 if user_input == 'Full':
@@ -100,8 +102,7 @@ if user_input == 'Full':
             plt.savefig(path+"/"+name+"/"+task+'_fig.png')
             plt.close()
     if plotornot == "Archive":
-        archname = "testofscript"
-        #input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
+        archname = input("Please provide conditions of simulation. Type /Bump/ if simulation was run with a present conductivity bump | Leave blank if no bump was present:")
         if archname == "Bump":
             for task in data_dict.keys():
                     for val in np.nditer(data_dict[task].T, order='C'): 
@@ -146,7 +147,7 @@ if user_input == "Flux":
             plt.ylabel("Flux")
             Rayleigh = config.getfloat('param', 'Ra')
             title=input("Give title /Title of Heat Fluxes/:")
-            plt.title(title+"for Ra= "+ str(Rayleigh))
+            plt.title(title+" for Ra= "+ str(Rayleigh))
             file_name = path+"/"+name+"/"+"Flux_fig.png"
             plt.savefig(file_name)
             print(file_name)
