@@ -165,8 +165,8 @@ def set_equations(problem):
                    (args['--stress_free'], "right(ωx) = 0", "True"),
                    (args['--stress_free'], " left(ωy) = 0", "True"),
                    (args['--stress_free'], "right(ωy) = 0", "True"),
-                   (True, " left(w) = 0", kx_n0),
-                   (True, "right(w) = 0", kx_n0),
+                   (True, "right(w) = 0", kx_n0), #impenetrable
+                   (True, " left(w) = 0", kx_n0),#impenetrable
                  )
     for solve, bc, cond in boundaries:
         if solve: 
