@@ -25,9 +25,9 @@ source $config
 mkdir $name
 cp $config $name
 # mpiexec -n $nprocs python3 rayleigh_benard.py --sn=$name --st=$st --ra=$ra --pr=$pr --lx=$lx --state=$state
-mpiexec -n $nprocs python3 rayleigh_benard_config.py $config
+# mpirun -n $nprocs python3 rayleigh_benard_config.py $config
 # mpiexec -n 1 python3 plotfluxbetter.py $config
 # mpiexec -n $nprocs python3 plot_snapshots.py $config
-# png2mp4 ${name}/frames/ ${name}/movie.mp4 120
+png2mp4 ${name}/frames/ ${name}/movie.mp4 120
 # code ${name}/movie.mp4
 # rm -rf ${name}_frames ; rm -rf snapshots

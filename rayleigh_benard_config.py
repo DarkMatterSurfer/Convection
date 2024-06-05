@@ -32,6 +32,7 @@ Nx, Nz = Nx_prime, Nz_prime
 print((Nx,Nz))#Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
 Rayleigh = config.getfloat('param', 'Ra') #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
 Prandtl = config.getfloat('param', 'Pr')
+adiabat = config.getfloat('param', 'adiabat')
 dealias = 3/2
 stop_sim_time = config.getfloat('param', 'st')
 timestepper = d3.RK222
@@ -87,7 +88,7 @@ grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
 # First-order form: "lap(f)" becomes "div(grad_f)"
 problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
 problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(b) - kappa*div(grad_b) + (u@ez) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b)") #Bouyancy equation u@ez supercriticality of 2 
+problem.add_equation("dt(b) - kappa*div(grad_b) + adiabat*(u@ez) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b)") #Bouyancy equation u@ez supercriticality of 2 
 problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
 #Boundary conditions
 problem.add_equation("b(z=0) = Lz")
@@ -196,34 +197,3 @@ except:
 finally:
     solver.log_stats()
 
-# if (CW.rank == 0):
-#     filetype = '.csv'
-#     fluxtop = 'topflux'
-#     fluxbottom = 'bottomflux'
-#     reyrey = 'Reynolds'
-#     Run_num = ''
-
-#     #Declaring file name 
-#     Reynolds_File = open(str(Rayleigh)+"Run" + Run_num + reyrey + filetype, 'w') 
-#     TopFlux_File = open(str(Rayleigh)+'Run' + Run_num + fluxtop + filetype, 'w')
-#     BottomFlux_File = open(str(Rayleigh)+'Run' + Run_num + fluxbottom + filetype, 'w')
-
-
-#     #Writing in file
-#     for i in range(len(Reynolds_list)):
-#         Reynolds_File.write(str(time_list[i]) + ', ' + str(Reynolds_list[i] ) + '\n')
-        
-#     for i in range(len(heatflux_top)):
-#         TopFlux_File.write(str(time_list[i]) + ', ' + str(heatflux_top[i] ) + '\n')
-
-#     for i in range(len(heatflux_bottom)):
-#         BottomFlux_File.write(str(time_list[i]) + ', ' + str(heatflux_bottom[i] ) + '\n')
-
-#     # Reynolds_File.close()
-#     TopFlux_File.close()
-#     BottomFlux_File.close()
-#     # plt.plot(time_list, Reynolds_list)
-#     # plt.title('Simulated Maximum Reynolds Number in Time-domain' + '\n' + 'Ra=' + str(Rayleigh), fontsize = 10)
-#     # plt.xlabel('TIme')
-#     # plt.ylabel('Reynolds [Re]')
-#     # plt.show()
