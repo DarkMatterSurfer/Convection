@@ -50,6 +50,8 @@ zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 p = dist.Field(name='p', bases=(xbasis,zbasis))
 b = dist.Field(name='b', bases=(xbasis,zbasis))
 u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
+Q = dist.Field(name='Q', bases=(zbasis, ))
+
 tau_p = dist.Field(name='tau_p')
 tau_b1 = dist.Field(name='tau_b1', bases=xbasis)
 tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
@@ -76,6 +78,21 @@ koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e
 
 nu = (Rayleigh / Prandtl)**(-1/2) #viscousity
 x, z = dist.local_grids(xbasis, zbasis)
+# Q['g'] = z 
+# print(Q['g'].shape)
+# epsilon = 0.1
+# for index, i in enumerate(Q['g'][0,:]):
+#     if i < 1-epsilon: 
+#         Q['g'] = -1.0
+#     if i > 1 - epsilon:
+#         Q['g'] = 1.0
+#     else:
+#         Q['g'] =0
+
+# plt.plot(z,Q['g'])
+# plt.show()
+
+
 ex, ez = coords.unit_vector_fields(dist)
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)

@@ -35,7 +35,7 @@ stop_sim_time = config.getfloat('param', 'st')
 timestepper = d3.RK222
 max_timestep = config.getfloat('param', 'maxtimestep')
 dtype = np.float64
-name = "A0p7Ra1e6" #config.get('param', 'name')
+name = config.get('param', 'name')
 #Condition inputs
 user_input = input('Type /Full/ for all profile plotting | Type /Flux/ for conv. diff. fluxes:')
 if user_input == "Full" or user_input == "Flux":
@@ -52,7 +52,8 @@ dist = d3.Distributor(coords, dtype=dtype)
 xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
 zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 x, z = dist.local_grids(xbasis, zbasis)
-
+#Hollow Supstitutions
+A = config.getfloat('param', 'A')
 
 print("CHECK FILENAMES")
 data_dict = dict()
@@ -96,9 +97,9 @@ if user_input == 'Full':
             Rayleigh = config.getfloat('param', 'Ra')
             title_input = input("Provide string literal for plot for "+task+"plot:")
             if title_input == "":
-                plt.title(task+" Plot Ra= "+ str(Rayleigh))
+                plt.title(task+" Ra= "+ str(Rayleigh) + " A = "+str(A))
             else:
-                plt.title(title_input+" Plot Ra= "+ str(Rayleigh))
+                plt.title(title_input+"Plot; Ra= "+ str(Rayleigh) + " A = "+str(A))
             plt.savefig(path+"/"+name+"/"+task+'_fig.png')
             plt.close()
     if plotornot == "Archive":
@@ -147,7 +148,7 @@ if user_input == "Flux":
             plt.ylabel("Flux")
             Rayleigh = config.getfloat('param', 'Ra')
             title=input("Give title /Title of Heat Fluxes/:")
-            plt.title(title+" for Ra= "+ str(Rayleigh))
+            plt.title(title+";Ra= "+ str(Rayleigh) + " A = "+A)
             file_name = path+"/"+name+"/"+"Flux_fig.png"
             plt.savefig(file_name)
             print(file_name)

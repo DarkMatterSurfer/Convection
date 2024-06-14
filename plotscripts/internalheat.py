@@ -25,12 +25,13 @@ ncores = CW.size
 # Parameters
 Lx, Lz = config.getfloat('param', 'Lx'), config.getfloat('param', 'Lz')
 n = config.getint('param', 'n') #power of two 
-Nz_prime = 2048
+Nz_prime = 2**n
 Nx_prime = config.getint('param','aspect') * Nz_prime #float(args['--lx']) 
 Nx, Nz = Nx_prime, Nz_prime
 print((Nx,Nz))#Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
 Rayleigh = config.getfloat('param', 'Ra') #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
 Prandtl = config.getfloat('param', 'Pr')
+adiabat = config.getfloat('param', 'adiabat')
 dealias = 3/2
 stop_sim_time = config.getfloat('param', 'st')
 timestepper = d3.RK222
@@ -43,11 +44,13 @@ coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
 xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
 zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
-x, z = dist.local_grids(xbasis, zbasis)
+
 # Fields
 p = dist.Field(name='p', bases=(xbasis,zbasis))
 b = dist.Field(name='b', bases=(xbasis,zbasis))
 u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
+Q = dist.Field(name='Q', bases=(zbasis, ))
+
 tau_p = dist.Field(name='tau_p')
 tau_b1 = dist.Field(name='tau_b1', bases=xbasis)
 tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
@@ -55,31 +58,36 @@ tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
 integx = lambda arg: d3.Integrate(arg, 'x')
 integ = lambda arg: d3.Integrate(integx(arg), 'z')
-temperature = 2*(z-0.5)
-b = temperature
-
 # Hollow Substitutions
 kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
+
 sig = config.getfloat('param', 'sig')
 e = config.getfloat('param', 'e')
 Tbump = config.getfloat('param', 'Tbump')
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
+if koopa1D == True: 
+    Tplus = integx(Tplus/Lx)
+    Tminus = integx(Tminus/Lx)
+
 A = config.getfloat('param', 'A')
 pi = np.pi
 koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
 
 
-plt.figure(figsize=(8,5))
-plt.plot((b).ravel(),(kappa+koopa).ravel(), color='k', linestyle='solid', linewidth=2, label = "A = 0.5")
-# plt.plot((b).ravel(),(kappa+hollowsub(30,0.1,0,0.7)).ravel(), color='g', linestyle='dotted', linewidth=2, label = "A = 0.7")
-# plt.plot((b).ravel(),(kappa+hollowsub(30,0.1,0,0.3)).ravel(), color='b', linestyle='dashdot', linewidth=2, label = "A = 0.3")
-plt.axhline(y = 0.0010, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0") 
-plt.legend(loc = "lower right", prop = {'size':10})
-plt.ylabel(r"$\kappa(b)$")
-plt.xlabel("b")
-plt.title("Thermal Diffusivity")
-plt.xlim(-1.0,1.0)
-plt.ylim(0.0,0.0012)
-print(path+"/bumpfunction.png")
-plt.savefig(path+"/bumpfunction.png")
+nu = (Rayleigh / Prandtl)**(-1/2) #viscousity
+x, z = dist.local_grids(xbasis, zbasis)
+Q['g'] = z 
+print(Q['g'].shape)
+print(Q['g'].shape)
+epsilon = 0.1
+for index, i in enumerate(Q['g'][0,:]):
+    if i < 1-epsilon: 
+        Q['g'] = -1.0
+    if i > 1 - epsilon:
+        Q['g'] = 1.0
+    else:
+        Q['g'] =0
+
+plt.plot(z,Q['g'])
+plt.show()
