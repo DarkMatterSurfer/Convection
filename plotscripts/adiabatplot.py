@@ -58,7 +58,7 @@ integ = lambda arg: d3.Integrate(integx(arg), 'z')
 temperature = 2*(z-0.5)
 b = temperature
 
-# Hollow Substitutions
+#Adiabatic Temperature Gradient
 kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
 sig = config.getfloat('param', 'sig')
 e = config.getfloat('param', 'e')
@@ -72,12 +72,12 @@ koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e
 
 plt.figure(figsize=(8,5))
 plt.plot((z).ravel(),(kappa+koopa).ravel(), color='k', linestyle='solid', linewidth=2, label = "A =" + str(A))
-plt.axhline(y = 0.0010, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0") 
+# plt.axhline(y = 0.0010, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0") 
 plt.legend(loc = "lower right", prop = {'size':10})
-plt.ylabel(r"$\kappa(b)$")
-plt.xlabel("b")
-plt.title("Thermal Diffusivity")
+plt.ylabel(r"$\nabla_{ad}$")
+plt.xlabel("z")
+plt.title("Adiabatic Temperature Gradient")
 # plt.xlim(-1.0,1.0)
 # plt.ylim(0.0,0.0012)
-print(path+"/bumpfunction.png")
+print(path+"/adiabatfunction.png")
 plt.savefig(path+"/bumpfunction.png")

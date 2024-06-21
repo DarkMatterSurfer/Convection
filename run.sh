@@ -25,9 +25,9 @@ source $config
 mkdir $name
 cp $config $name
 mpirun -n $nprocs python3 rayleigh_benard_config.py $config
-mpiexec -n $nprocs python3 ~/Convection/plotscripts/plot_snapshots.py $config
+mpirun -n $nprocs python3 ~/Convection/plotscripts/plot_snapshots.py $config
 png2mp4 ${name}/frames/ ${name}/movie.mp4 120
-echo ${name}/movie.mp4
+# echo ${name}/movie.mp4
 # mpirun -n 1 python3 ~/Convection/plotscripts/bumpplot.py $config
 # mpirun -n 1 python3 ~/Convection/plotscripts/plotfluxbetter.py $config
 # code ${name}/movie.mp4

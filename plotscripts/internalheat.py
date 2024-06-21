@@ -31,7 +31,7 @@ Nx, Nz = Nx_prime, Nz_prime
 print((Nx,Nz))#Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
 Rayleigh = config.getfloat('param', 'Ra') #CHANGEABLE/Take Notes Lower Number~More turbulence resistant Higher Number~Less turbulence resistant
 Prandtl = config.getfloat('param', 'Pr')
-adiabat = config.getfloat('param', 'adiabat')
+adiabat = config.getfloat('param', 'adiabat_mean')
 dealias = 3/2
 stop_sim_time = config.getfloat('param', 'st')
 timestepper = d3.RK222
@@ -58,36 +58,20 @@ tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
 tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
 integx = lambda arg: d3.Integrate(arg, 'x')
 integ = lambda arg: d3.Integrate(integx(arg), 'z')
-# Hollow Substitutions
-kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
-
-sig = config.getfloat('param', 'sig')
-e = config.getfloat('param', 'e')
-Tbump = config.getfloat('param', 'Tbump')
-Tplus = b -Tbump + e
-Tminus = b -Tbump - e
-if koopa1D == True: 
-    Tplus = integx(Tplus/Lx)
-    Tminus = integx(Tminus/Lx)
-
-A = config.getfloat('param', 'A')
-pi = np.pi
-koopa = kappa*A*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
-
 
 nu = (Rayleigh / Prandtl)**(-1/2) #viscousity
 x, z = dist.local_grids(xbasis, zbasis)
-Q['g'] = z 
-print(Q['g'].shape)
-print(Q['g'].shape)
-epsilon = 0.1
-for index, i in enumerate(Q['g'][0,:]):
-    if i < 1-epsilon: 
-        Q['g'] = -1.0
-    if i > 1 - epsilon:
-        Q['g'] = 1.0
-    else:
-        Q['g'] =0
 
-plt.plot(z,Q['g'])
-plt.show()
+#Internal Heating
+internalheating = 2*z[0,:]
+# ((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
+plt.xlim(0,1)
+plt.ylim(-1.05,1.05)
+plt.plot(z[0,:],internalheating)
+filename = "/heatingtestfig.png"
+plt.savefig(name+filename)
+plt.close()
+# fluxQ = np.trapz(internalheating[:round(Nz/2)], x=z[0,:round(Nz/2)])
+# Qratio = fluxQ/0.1
+# internalheating = internalheating/Qratio
+# Q['g'] = internalheating
