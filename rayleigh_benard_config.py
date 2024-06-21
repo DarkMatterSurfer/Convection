@@ -109,7 +109,7 @@ if koopa1D == True:
     Tplus = integx(Tplus/Lx)
     Tminus = integx(Tminus/Lx)
 koopa = kappa*A_dff*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e))) 
-if rank == 1: 
+if rank == 0: 
     plt.plot(z,(kappa+koopa), color='k', linestyle='solid', linewidth=2, label = "A =" + str(A_dff))
     plt.axhline(y = kappa, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0") 
     plt.savefig(name+"/bumpplot.png")
@@ -234,7 +234,9 @@ try:
         timestep = CFL.compute_timestep()
         solver.step(timestep)
         if (solver.iteration-1) % 10 == 0:
-            force_A = 1+(1/2)*np.cos({solver.simtime*(2*pi)}/10)
+            period = 1/10
+            amplitude = 1/2
+            force_A = 1 +amplitude*np.cos((solver.sim_time*(2*pi))*(period))
             Q['g'][0,:round(Nz/2)]=(force_A)*Q['g'][0,:round(Nz/2)]
             max_Re = flow.max('Re')
             Reynolds_list.append(max_Re)
@@ -245,4 +247,4 @@ except:
     raise
 finally:
     solver.log_stats()
-
+       

@@ -64,7 +64,7 @@ x, z = dist.local_grids(xbasis, zbasis)
 
 #Internal Heating
 internalheating = 2*z[0,:]
-# ((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
+((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
 plt.xlim(0,1)
 plt.ylim(-1.05,1.05)
 plt.plot(z[0,:],internalheating)
