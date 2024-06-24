@@ -25,7 +25,7 @@ source $config
 mkdir $name
 cp $config $name
 # mpirun -n $nprocs python3 rayleigh_benard_config.py $config
-mpirun -n $nprocs python3 forcing_rayleighbenard.py $config
+# mpirun -n $nprocs python3 forcing_rayleighbenard.py $config
 mpirun -n $nprocs python3 ~/Convection/plotscripts/plot_snapshots.py $config
 png2mp4 ${name}/frames/ ${name}/movie.mp4 120
 # echo ${name}/movie.mp4

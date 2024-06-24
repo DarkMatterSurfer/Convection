@@ -137,9 +137,9 @@ problem.add_equation("dt(b) - kappa*div(grad_b) + (u@ez) + lift(tau_b2) = - u@gr
 problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
 
 #Boundary conditions
-problem.add_equation("(b(z=0)) = 100*np.sin(10*t)") #oscillating bottom boundary temp 
+problem.add_equation("(b(z=0)) = np.sin((2*pi)*t)") #oscillating bottom boundary temp 
 problem.add_equation("u(z=0) = 0")
-problem.add_equation("b(z=Lz) = 0")
+problem.add_equation("b(z=Lz) = -1")
 problem.add_equation("u(z=Lz) = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge
 
