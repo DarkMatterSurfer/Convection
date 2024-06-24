@@ -1,4 +1,3 @@
-
 from docopt import docopt
 from configparser import ConfigParser
 import numpy as np
@@ -30,7 +29,7 @@ ncores = CW.size
 Lx, Lz = config.getfloat('param', 'Lx'), config.getfloat('param', 'Lz')
 n = config.getint('param', 'n') #power of two 
 Nz_prime = 2**n
-Nx_prime = config.getint('param','aspect') * Nz_prime #float(args['--lx']) 
+Nx_prime = round(config.getfloat('param','aspect') * Nz_prime) #float(args['--lx']) 
 Nx, Nz = Nx_prime, Nz_prime
 if rank == 0:
     print((Nx,Nz))#Nx, Nz = 1024, 256 #4Nx:Nz locked ratio~all powers of 2 Nx, Nz = Nx_prime, Nz_prime
@@ -54,6 +53,7 @@ zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
 dz = lambda A: d3.Differentiate(A, coords['z'])
 dx = lambda A: d3.Differentiate(A, coords['x'])
 # Fields
+t = dist.Field(name='t')
 p = dist.Field(name='p', bases=(xbasis,zbasis))
 b = dist.Field(name='b', bases=(xbasis,zbasis))
 u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
@@ -68,8 +68,6 @@ integx = lambda arg: d3.Integrate(arg, 'x')
 integ = lambda arg: d3.Integrate(integx(arg), 'z')
 nu = (Rayleigh / Prandtl)**(-1/2) #viscousity
 x, z = dist.local_grids(xbasis, zbasis)
-Z = dist.Field(name='Z', bases=(zbasis,))
-Z['g'] = z
 ex, ez = coords.unit_vector_fields(dist)
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
@@ -80,8 +78,6 @@ grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
 sig = config.getfloat('param', 'sig')
 e = config.getfloat('param', 'e')
 Tbump = config.getfloat('param', 'Tbump')
-b['g']=2*z-1
-b_arr = b.gather_data()
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
 pi = np.pi
@@ -97,61 +93,51 @@ else:
 adiabat_mean = config.getfloat('param', 'adiabat_mean')   
 adiabat_arr = (adiabat_mean+(2/pi)*A_ad*((-pi/2)+(np.arctan(sig*(z-center)**2)))) #Adiabat
 nabad['g']=adiabat_arr
+
+    #Adiabat plotter
+if rank == 0:
+    plt.plot(z[0,:],nabad['g'][0,:])
+    plt.ylim(0,4)
+    plt.xlim(0,1)
+    plt.savefig(name+"/adaibattempgrad.png")
+    plt.close()
+
 #Diffusivity Substitution
+
     #Horizontal Averaging of diffusivity
 if koopa1D == True: 
     Tplus = integx(Tplus/Lx)
-    Tminus = integx(Tminus/Lx) 
-koopa = kappa*A_dff*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
-temp = (kappa+koopa).evaluate()
-temp.change_scales(1) 
-temp['g']
-koopa_arr = (temp).gather_data() #plotting variables
-#Internal Heating
-internalheating = ((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
-Q['g'] = internalheating
-arr_Ad = nabad.gather_data()
-arr_Q=Q.gather_data()
-arr_z = Z.gather_data()
+    Tminus = integx(Tminus/Lx)
+koopa = kappa*A_dff*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e))) 
 if rank == 0: 
-    maxQ = np.max(arr_Q)
-    print(maxQ)
-    #diffusivity
-    plt.plot(b_arr[0,:],koopa_arr[0,:], color='k', linestyle='solid', linewidth=2, label = "A =" + str(A_dff))
-    plt.axhline(y = kappa, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0")
-    plt.xlim(-1,1)
-    plt.ylim(0.1,(3/2)*kappa) 
-    filename = "/diffusivitybouyprofile.png"
-    plt.savefig(name+filename)
-    print(name+filename)
-    plt.close()
-    #adiabat
-    plt.plot(arr_z[0,:],arr_Ad[0,:])
-    plt.ylim(0,4)
-    plt.xlim(0,1)
-    filename = "/adaibattempgrad.png"
-    plt.savefig(name+filename)
-    print(name+filename)
-    plt.close()
-    #internal heating
-    plt.plot(arr_z[0,:],arr_Q[0,:])
-    plt.xlim(0,1)
-    plt.ylim(-1.05,1.05)
-    filename = "/heatingtestfig.png"
-    plt.savefig(name+filename)
-    print(name+filename)
+    plt.plot(z,(kappa+koopa), color='k', linestyle='solid', linewidth=2, label = "A =" + str(A_dff))
+    plt.axhline(y = kappa, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0") 
+    plt.savefig(name+"/bumpplot.png")
     plt.close()
 
+#Internal Heating
+# internalheating = ((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
+# if rank == 0: 
+#     plt.plot(z[0,:],internalheating)
+#     plt.xlim(0,1)
+#     plt.ylim(-1.05,1.05)
+#     filename = "/heatingtestfig.png"
+#     plt.savefig(name+filename)
+#     plt.close()
+# fluxQ = np.trapz(internalheating[:round(Nz/2)], x=z[0,:round(Nz/2)])
+# Qratio = fluxQ/0.1
+# internalheating = internalheating/Qratio
+# Q['g'] = internalheating * 0.0
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
-problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
+problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], time=t, namespace=locals())
 problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(b) - kappa*div(grad_b) + nabad*(u@ez) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b) + Q") #Bouyancy equation u@ez supercriticality of 2 
+problem.add_equation("dt(b) - kappa*div(grad_b) + (u@ez) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b)") #Bouyancy equation u@ez supercriticality of 2 
 problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
 
 #Boundary conditions
-problem.add_equation("(b(z=0)) = 0")
+problem.add_equation("(b(z=0)) = 100*np.sin(10*t)") #oscillating bottom boundary temp 
 problem.add_equation("u(z=0) = 0")
 problem.add_equation("b(z=Lz) = 0")
 problem.add_equation("u(z=Lz) = 0")
@@ -170,7 +156,7 @@ solver.stop_sim_time = stop_sim_time
 # Initial conditions
 state = config.get('param', 'state')
 if (state == 'none' ):
-    b.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise intal parameters~
+    # b.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise intal parameters~
     b['g'] *= z * (Lz - z) # Damp noise at walls
     # b['g'] += Lz - 2*z # Add linear background
 else:
@@ -182,7 +168,7 @@ checkpoints = solver.evaluator.add_file_handler(name+'/checkpoints', sim_dt=100,
 checkpoints.add_tasks(solver.state, layout='g')
 
 # Analysis
-snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
+snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.01, max_writes=50, mode = 'overwrite')
 snapshots.add_task(b, name='buoyancy')
 snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
 
@@ -195,6 +181,7 @@ Reynolds_Num = (np.sqrt(u@u))/(nu)
 flow.add_property(Reynolds_Num, name='Re') #Reynolds Number
 profiles.add_task(integx(Reynolds_Num), name = "reynolds")
 profiles.add_task(integ(Reynolds_Num), name = "reynolds_timeaveraged")
+
 #Fluxes
     #Convective Flux
 profiles.add_task(integx(u@ez * b), name = 'convectiveflx') #Convective flux is <w*b>
@@ -239,17 +226,14 @@ try:
         timestep = CFL.compute_timestep()
         solver.step(timestep)
         if (solver.iteration-1) % 10 == 0:
-            period = 1/10
-            amplitude = 1/2
-            force_A = 1 +amplitude*np.cos((solver.sim_time*(2*pi))*(period))
-            Q['g'][0,:round(Nz/2)]=(force_A)*Q['g'][0,:round(Nz/2)]
+            # period = 1/10
+            # amplitude = 1/2
+            # force_A = 1 +amplitude*np.cos((solver.sim_time*(2*pi))*(period))
+            # Q['g'][0,:round(Nz/2)]=(force_A)*Q['g'][0,:round(Nz/2)]
             max_Re = flow.max('Re')
-            Reynolds_list.append(max_Re)
-            time_list.append(solver.sim_time)
             logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, timestep, max_Re))
 except:
     logger.error('Exception raised, triggering end of main loop.')
     raise
 finally:
     solver.log_stats()
-       
