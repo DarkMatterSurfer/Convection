@@ -68,6 +68,8 @@ integx = lambda arg: d3.Integrate(arg, 'x')
 integ = lambda arg: d3.Integrate(integx(arg), 'z')
 nu = (Rayleigh / Prandtl)**(-1/2) #viscousity
 x, z = dist.local_grids(xbasis, zbasis)
+Z = dist.Field(name='Z', bases=(zbasis,))
+Z['g'] = z
 ex, ez = coords.unit_vector_fields(dist)
 lift_basis = zbasis.derivative_basis(1)
 lift = lambda A: d3.Lift(A, lift_basis, -1)
@@ -78,6 +80,8 @@ grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
 sig = config.getfloat('param', 'sig')
 e = config.getfloat('param', 'e')
 Tbump = config.getfloat('param', 'Tbump')
+b['g']=2*z-1
+b_arr = b.gather_data()
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
 pi = np.pi
@@ -93,41 +97,51 @@ else:
 adiabat_mean = config.getfloat('param', 'adiabat_mean')   
 adiabat_arr = (adiabat_mean+(2/pi)*A_ad*((-pi/2)+(np.arctan(sig*(z-center)**2)))) #Adiabat
 nabad['g']=adiabat_arr
-
-    #Adiabat plotter
-if rank == 0:
-    plt.plot(z[0,:],nabad['g'][0,:])
-    plt.ylim(0,4)
-    plt.xlim(0,1)
-    plt.savefig(name+"/adaibattempgrad.png")
-    plt.close()
-
 #Diffusivity Substitution
-
     #Horizontal Averaging of diffusivity
 if koopa1D == True: 
     Tplus = integx(Tplus/Lx)
-    Tminus = integx(Tminus/Lx)
-koopa = kappa*A_dff*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e))) 
-if rank == 0: 
-    plt.plot(z,(kappa+koopa), color='k', linestyle='solid', linewidth=2, label = "A =" + str(A_dff))
-    plt.axhline(y = kappa, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0") 
-    plt.savefig(name+"/bumpplot.png")
-    plt.close()
-
+    Tminus = integx(Tminus/Lx) 
+koopa = kappa*A_dff*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
+temp = (kappa+koopa).evaluate()
+temp.change_scales(1) 
+temp['g']
+koopa_arr = (temp).gather_data() #plotting variables
 #Internal Heating
 internalheating = ((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
+Q['g'] = internalheating
+arr_Ad = nabad.gather_data()
+arr_Q=Q.gather_data()
+arr_z = Z.gather_data()
 if rank == 0: 
-    plt.plot(z[0,:],internalheating)
+    maxQ = np.max(arr_Q)
+    print(maxQ)
+    #diffusivity
+    plt.plot(b_arr[0,:],koopa_arr[0,:], color='k', linestyle='solid', linewidth=2, label = "A =" + str(A_dff))
+    plt.axhline(y = kappa, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0")
+    plt.xlim(-1,1)
+    plt.ylim(0.1,(3/2)*kappa) 
+    filename = "/diffusivitybouyprofile.png"
+    plt.savefig(name+filename)
+    print(name+filename)
+    plt.close()
+    #adiabat
+    plt.plot(arr_z[0,:],arr_Ad[0,:])
+    plt.ylim(0,4)
+    plt.xlim(0,1)
+    filename = "/adaibattempgrad.png"
+    plt.savefig(name+filename)
+    print(name+filename)
+    plt.close()
+    #internal heating
+    plt.plot(arr_z[0,:],arr_Q[0,:])
     plt.xlim(0,1)
     plt.ylim(-1.05,1.05)
     filename = "/heatingtestfig.png"
     plt.savefig(name+filename)
+    print(name+filename)
     plt.close()
-fluxQ = np.trapz(internalheating[:round(Nz/2)], x=z[0,:round(Nz/2)])
-Qratio = fluxQ/0.1
-internalheating = internalheating/Qratio
-Q['g'] = internalheating
+
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"

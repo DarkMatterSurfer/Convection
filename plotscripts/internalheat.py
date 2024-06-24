@@ -63,13 +63,13 @@ nu = (Rayleigh / Prandtl)**(-1/2) #viscousity
 x, z = dist.local_grids(xbasis, zbasis)
 
 #Internal Heating
-internalheating = 2*z[0,:]
-((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
+internalheating = ((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
 plt.xlim(0,1)
 plt.ylim(-1.05,1.05)
 plt.plot(z[0,:],internalheating)
 filename = "/heatingtestfig.png"
 plt.savefig(name+filename)
+print(name+filename)
 plt.close()
 # fluxQ = np.trapz(internalheating[:round(Nz/2)], x=z[0,:round(Nz/2)])
 # Qratio = fluxQ/0.1
