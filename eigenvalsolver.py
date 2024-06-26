@@ -59,6 +59,9 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, NEV=10, target=0):
     kappa = (Rayleigh * Prandtl)**(-1/2)
     nu = (Rayleigh / Prandtl)**(-1/2)
     x, z = dist.local_grids(xbasis, zbasis)
+    Z = dist.Field(name='Z', bases=(zbasis,))
+    Z['g'] = z
+    arr_z = Z.gather_data()
     ex, ez = coords.unit_vector_fields(dist)
     lift_basis = zbasis.derivative_basis(1)
     lift = lambda A: d3.Lift(A, lift_basis, -1)
@@ -67,12 +70,15 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, NEV=10, target=0):
 
     #A~ eigenfunc(A)*e^(ikx-omegat*t)
     dt = lambda A: -1*omega*A #Ansatz for dt
-    adiabat_mean = 2
+    adiabat_mean = 0
     pi = np.pi
-    A_ad = 0
+    A_ad = 0.5
     sig = 200
     adiabat_arr = (adiabat_mean+(2/pi)*A_ad*((-pi/2)+(np.arctan(sig*(z-0.5)**2)))) #Adiabat
     nabad['g']=adiabat_arr
+    if rank == 0:
+        plt.plot(arr_z[0,:],arr_Ad[0,:])
+        plt.ylim(0,4)
     # Problem
     # First-order form: "div(f)" becomes "trace(grad_f)"
     # First-order form: "lap(f)" becomes "div(grad_f)"
@@ -100,9 +106,9 @@ if __name__ == "__main__":
 
     # Parameters
     Nz = 64
-    Rayleigh = 2000
+    Rayleigh = 1710
     Prandtl = 1
-    kx_global = np.linspace(0.001, 4, 50)
+    kx_global = np.linspace(0.001, 4, 60)
     NEV = 10
 
     # Compute growth rate over local wavenumbers
