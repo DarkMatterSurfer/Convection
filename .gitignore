@@ -5,3 +5,6 @@
 *.h5
 *:Zone.Identifier
 *.out
+**core.*
+*core.*
+core.*
