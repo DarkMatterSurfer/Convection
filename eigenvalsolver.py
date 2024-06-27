@@ -26,10 +26,15 @@ import numpy as np
 from mpi4py import MPI
 import dedalus.public as d3
 import logging
+import sys
+import mpi4py
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+
 logger = logging.getLogger(__name__)
 
-
-def geteigenval(Rayleigh, Prandtl, kx, Nz, NEV=10, target=0):
+def geteigenval(Rayleigh, Prandtl, kx, Nz, A, ad, NEV=10, target=0):
     """Compute maximum linear growth rate."""
 
     # Parameters
@@ -41,12 +46,14 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, NEV=10, target=0):
     coords = d3.CartesianCoordinates('x', 'z')
     dist = d3.Distributor(coords, dtype=np.complex128, comm=MPI.COMM_SELF)
     xbasis = d3.ComplexFourier(coords['x'], size=Nx, bounds=(0, Lx))
+    Xbasis = d3.ComplexFourier(coords['x'], size=64, bounds=(0, Lx))
     zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz))
 
     # Fields
     omega = dist.Field(name='omega')
     p = dist.Field(name='p', bases=(xbasis,zbasis))
     b = dist.Field(name='b', bases=(xbasis,zbasis))
+    mode = dist.Field(name="mode",bases=(Xbasis,))
     u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
     nabad = dist.Field(name="nabad",bases=(zbasis, ))
     tau_p = dist.Field(name='tau_p')
@@ -58,7 +65,7 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, NEV=10, target=0):
     # Substitutions
     kappa = (Rayleigh * Prandtl)**(-1/2)
     nu = (Rayleigh / Prandtl)**(-1/2)
-    x, z = dist.local_grids(xbasis, zbasis)
+    x,X, z = dist.local_grids(xbasis,Xbasis, zbasis)
     Z = dist.Field(name='Z', bases=(zbasis,))
     Z['g'] = z
     arr_z = Z.gather_data()
@@ -67,18 +74,18 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, NEV=10, target=0):
     lift = lambda A: d3.Lift(A, lift_basis, -1)
     grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
     grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
+    mode['g']=np.exp(1j*kx*X) #Eigenmode
 
     #A~ eigenfunc(A)*e^(ikx-omegat*t)
     dt = lambda A: -1*omega*A #Ansatz for dt
-    adiabat_mean = 0
+    #Adiabat Parameterization
+    adiabat_mean = ad
     pi = np.pi
-    A_ad = 0.5
+    A_ad = A
     sig = 200
     adiabat_arr = (adiabat_mean+(2/pi)*A_ad*((-pi/2)+(np.arctan(sig*(z-0.5)**2)))) #Adiabat
     nabad['g']=adiabat_arr
-    if rank == 0:
-        plt.plot(arr_z[0,:],arr_Ad[0,:])
-        plt.ylim(0,4)
+    arr_Ad = nabad.gather_data()
     # Problem
     # First-order form: "div(f)" becomes "trace(grad_f)"
     # First-order form: "lap(f)" becomes "div(grad_f)"
@@ -92,6 +99,35 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, NEV=10, target=0):
     problem.add_equation("u(z=Lz) = 0")
     problem.add_equation("integ(p) = 0") # Pressure gauge
 
+    # b['g']=(1j+1)*(z*(z-1)*(z-0.5))
+    # b_mode = (b*mode).evaluate()
+    # if rank == 0:
+    #     #Plotting eigenfunction
+    #     fig, ax = plt.subplots()
+    #     print(np.shape(X))
+    #     print(np.shape(b_mode['g']))
+    #     print(np.shape(z))
+    #     sys.exit()
+    #     c = ax.pcolormesh(x,z,b_mode['g'], cmap='RdBu')
+    #     ax.set_title('pcolormesh')
+    #     # set the limits of the plot to the limits of the data
+    #     ax.axis([x.min(), x.max()])
+    #     fig.colorbar(c, ax=ax)
+
+    #     # plt.plot(z[0,:],b_mode['g'][0,:])
+    #     plt.show()
+    #     plt.close()
+    # # b = solver.state[1]
+    # # print(b['g'])
+    # # print(b_mode['g'].shape)
+    # # print(b_mode['g'])
+
+    plt.plot(arr_z[0,:],arr_Ad[0,:])
+    plt.ylim(0,4)
+    plt.xlim(0,1)
+    plt.show()
+    plt.savefig('/home/iiw7750/Convection/adaibattempgrad.png')
+    plt.close()
     # Solver
     solver = problem.build_solver(entry_cutoff=0)
     solver.solve_sparse(solver.subproblems[1], NEV, target=target)
@@ -106,11 +142,12 @@ if __name__ == "__main__":
 
     # Parameters
     Nz = 64
-    Rayleigh = 1710
+    Rayleigh = 1000
     Prandtl = 1
-    kx_global = np.linspace(0.001, 4, 60)
-    NEV = 10
-
+    kx_global = np.linspace(0.001, 4, 50)
+    NEV = 1
+    A = 1.8
+    ad = 0
     # Compute growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
     t1 = time.time()
@@ -118,7 +155,7 @@ if __name__ == "__main__":
     growth_locallist = []
     frequecny_locallist = []
     for kx in kx_local:
-        eigenvals = geteigenval(Rayleigh, Prandtl, kx, Nz, NEV=NEV) #np.array of complex
+        eigenvals = geteigenval(Rayleigh, Prandtl, kx, Nz,A,ad, NEV=NEV) #np.array of complex
         eigenlen = len(eigenvals)
         gr_max = -1*np.inf
         max_index = -1
@@ -154,14 +191,14 @@ if __name__ == "__main__":
     # Plot growth rates from root process
     if comm.rank == 0:
         #Plotting Set-up
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9,7), sharex=True, dpi = 500)
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11,9), sharex=True, dpi = 500)
         fig.suptitle('Rayleigh Benard Eigenvalue Problem')
         ax1.set_ylabel(r'$\omega$')
         ax2.set_ylabel(r'$\text{f}$')
-        ax1.set_ylim(-1.2,0)
+        # ax1.set_ylim(bottom=0)
         ax2.set_xlabel(r'$k_x$')
-        ax1.title.set_text(r'Rayleigh-Benard Modes Growth Rates ($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f$)' %(Rayleigh, Prandtl))
-        ax2.title.set_text(r'Rayleigh-Benard Modes Frequency($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f$)' %(Rayleigh, Prandtl))
+        ax1.title.set_text(r'Rayleigh-Benard Modes Growth Rates ($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f, \; \mathrm{A} = %.2f $)' %(Rayleigh, Prandtl,ad,A))
+        ax2.title.set_text(r'Rayleigh-Benard Modes Frequency($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f, \; \mathrm{A} = %.2f $)' %(Rayleigh, Prandtl,ad,A))
 
         #Growth Rates
         ax1.scatter(kx_global, growth_global)
@@ -173,6 +210,7 @@ if __name__ == "__main__":
         plt.tight_layout()
 
         #Figure Saving
-        plt.savefig('eigenval_plot.png')
-        print("~/Convection/eigenval_plot.png")
+        filename = 'Ad_'+str(ad)+'Amp_'+str(A)+'_eigenval_plot.png'
+        plt.savefig("/home/iiw7750/Convection/eigenvalprob_plots/"+"Ra"+str(Rayleigh)+"Pr"+str(Prandtl)+"/"+filename)
+        print(filename)
         plt.close()

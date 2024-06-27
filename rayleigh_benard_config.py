@@ -80,7 +80,7 @@ grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
 sig = config.getfloat('param', 'sig')
 e = config.getfloat('param', 'e')
 Tbump = config.getfloat('param', 'Tbump')
-b['g']=2*z-1
+# b['g']=2*z-1
 b_arr = b.gather_data()
 Tplus = b -Tbump + e
 Tminus = b -Tbump - e
@@ -88,6 +88,7 @@ pi = np.pi
 center=config.getfloat("param","center") 
 A_dff = 0
 A_ad = 0
+temp = 0
 if paramAD_Diff:
     A_dff = config.getfloat('param','A')
 else:
@@ -103,10 +104,11 @@ if koopa1D == True:
     Tplus = integx(Tplus/Lx)
     Tminus = integx(Tminus/Lx) 
 koopa = kappa*A_dff*(((-pi/2)+np.arctan(sig*Tplus*Tminus))/((pi/2)+np.arctan(sig*e*e)))
-temp = (kappa+koopa).evaluate()
-temp.change_scales(1) 
-temp['g']
-koopa_arr = (temp).gather_data() #plotting variables
+if paramAD_Diff:
+    temp = (kappa+koopa).evaluate()
+    temp.change_scales(1) 
+    temp['g']
+    koopa_arr = (temp).gather_data() #plotting variables
 #Internal Heating
 internalheating = ((-np.tanh(50*(z[0,:]-0.9)))-np.tanh(50*((z[0,:])-(1-0.9))))/2 #fucntion
 Q['g'] = internalheating
@@ -116,23 +118,25 @@ arr_z = Z.gather_data()
 if rank == 0: 
     maxQ = np.max(arr_Q)
     print(maxQ)
-    #diffusivity
-    plt.plot(b_arr[0,:],koopa_arr[0,:], color='k', linestyle='solid', linewidth=2, label = "A =" + str(A_dff))
-    plt.axhline(y = kappa, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0")
-    plt.xlim(-1,1)
-    plt.ylim(0.1,(3/2)*kappa) 
-    filename = "/diffusivitybouyprofile.png"
-    plt.savefig(name+filename)
-    print(name+filename)
-    plt.close()
-    #adiabat
-    plt.plot(arr_z[0,:],arr_Ad[0,:])
-    plt.ylim(0,4)
-    plt.xlim(0,1)
-    filename = "/adaibattempgrad.png"
-    plt.savefig(name+filename)
-    print(name+filename)
-    plt.close()
+    if paramAD_Diff:
+        #diffusivity
+        plt.plot(b_arr[0,:],koopa_arr[0,:], color='k', linestyle='solid', linewidth=2, label = "A =" + str(A_dff))
+        plt.axhline(y = kappa, color = 'r', linestyle = '--',linewidth=1, label = "A = 0.0")
+        plt.xlim(-1,1)
+        plt.ylim(0.1,(3/2)*kappa) 
+        filename = "/diffusivitybouyprofile.png"
+        plt.savefig(name+filename)
+        print(name+filename)
+        plt.close()
+    else:
+        #adiabat
+        plt.plot(arr_z[0,:],arr_Ad[0,:])
+        plt.ylim(-4,4)
+        plt.xlim(0,1)
+        filename = "/adaibattempgrad.png"
+        plt.savefig(name+filename)
+        print(name+filename)
+        plt.close()
     #internal heating
     plt.plot(arr_z[0,:],arr_Q[0,:])
     plt.xlim(0,1)
@@ -141,7 +145,6 @@ if rank == 0:
     plt.savefig(name+filename)
     print(name+filename)
     plt.close()
-
 # Problem
 # First-order form: "div(f)" becomes "trace(grad_f)"
 # First-order form: "lap(f)" becomes "div(grad_f)"
@@ -150,9 +153,10 @@ problem.add_equation("trace(grad_u) + tau_p = 0")
 problem.add_equation("dt(b) - kappa*div(grad_b) + nabad*(u@ez) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b) + Q") #Bouyancy equation u@ez supercriticality of 2 
 problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
 
-#Boundary conditionsproblem.add_equation("(b(z=0)) = 0")
+#Boundary conditions
+problem.add_equation("b(z=0) = 1")
 problem.add_equation("u(z=0) = 0")
-problem.add_equation("b(z=Lz) = 0")
+problem.add_equation("b(z=Lz) = -1")
 problem.add_equation("u(z=Lz) = 0")
 problem.add_equation("integ(p) = 0") # Pressure gauge
 
@@ -171,7 +175,7 @@ state = config.get('param', 'state')
 if (state == 'none' ):
     b.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise intal parameters~
     b['g'] *= z * (Lz - z) # Damp noise at walls
-    # b['g'] += Lz - 2*z # Add linear background
+    b['g'] += Lz - 2*z # Add linear background
 else:
     solver.load_state(state)
     solver.sim_time = 0.0
@@ -238,13 +242,13 @@ try:
         timestep = CFL.compute_timestep()
         solver.step(timestep)
         if (solver.iteration-1) % 10 == 0:
-            period = 1/10
-            amplitude = 1/2
-            force_A = 1 +amplitude*np.cos((solver.sim_time*(2*pi))*(period))
-            Q['g'][0,:round(Nz/2)]=(force_A)*Q['g'][0,:round(Nz/2)]
+            # period = 1/10
+            # amplitude = 1/2
+            # force_A = 1 +amplitude*np.cos((solver.sim_time*(2*pi))*(period))
+            # Q['g'][0,:round(Nz/2)]=(force_A)*Q['g'][0,:round(Nz/2)]
+            # Reynolds_list.append(max_Re)
+            # time_list.append(solver.sim_time)
             max_Re = flow.max('Re')
-            Reynolds_list.append(max_Re)
-            time_list.append(solver.sim_time)
             logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, timestep, max_Re))
 except:
     logger.error('Exception raised, triggering end of main loop.')
