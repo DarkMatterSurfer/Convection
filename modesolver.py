@@ -9,9 +9,9 @@ comm = MPI.COMM_WORLD
 
 # Parameters
 Nz = 64
-Rayleigh = 1710
+Rayleigh = 1000000
 Prandtl = 1
-kx = 3.11
+kx = 3.75
 NEV = 10
 Lz = 1
 target = 0
@@ -79,36 +79,66 @@ print(f"Slowest decaying mode: λ = {evals[0]}")
 solver.set_state(np.argmin(np.abs(solver.eigenvalues - evals[0])), sp.subsystems[0])
 
 b.change_scales(1)
+p.change_scales(1)
+ux.change_scales(1)
+uz.change_scales(1)
 #Heat Map
 pi=np.pi
 phase=1
 phaser=np.exp(((1j*phase)*(2*pi))/4)
-temp=(np.outer(b['g'],mode)*phaser).real
+#Modes
+b_mode=(np.outer(b['g'],mode)*phaser).real
+press_mode=(np.outer(p['g'],mode)*phaser).real
+ux_mode=(np.outer(ux['g'],mode)*phaser).real
+uz_mode=(np.outer(uz['g'],mode)*phaser).real
+
+
 fig, axs = plt.subplots(2, 2)
-
 ax = axs[0, 0]
-c = ax.pcolor(arr_x,z,temp, cmap='RdBu') #buoyancy
-ax.set_title('pcolor')
+c = ax.pcolor(arr_x,z,b_mode, cmap='RdBu') #buoyancy
+ax.set_title('b')
 fig.colorbar(c, ax=ax)
-
 ax = axs[0, 1]
-c = ax.pcolor(arr_x,z,temp,cmap='RdBu') #pressure
-ax.set_title('pcolor')
+c = ax.pcolor(arr_x,z,press_mode,cmap='inferno') #pressure
+ax.set_title('P')
 fig.colorbar(c, ax=ax)
-
 ax = axs[1, 0]
-c = ax.pcolor(arr_x,z,temp, cmap='RdBu')
-ax.set_title('image (nearest, aspect="auto")') #ux
+c = ax.pcolor(arr_x,z,ux_mode, cmap='viridis')
+ax.set_title(r'$\text{u}_x$') #ux
 fig.colorbar(c, ax=ax)
-
 ax = axs[1, 1]
-c = ax.pcolor(arr_x,z,temp, cmap='RdBu') #uz
-ax.set_title('pcolorfast')
+c = ax.pcolor(arr_x,z,uz_mode, cmap='autumn') #uz
+ax.set_title(r'$\text{u}_z$')
 fig.colorbar(c, ax=ax)
 
 fig.tight_layout()
-plt.savefig("/home/iiw7750/Convection/rbcheatmodeplot.png")
+plt.savefig("/home/iiw7750/Convection/rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
 plt.close()
+#Eigenmodes plot
+#Plotting Set-up
+fig, (ax_b,ax_p,ax_x,ax_z) = plt.subplots(2,2 , figsize=(11,9), sharex=True, dpi = 500)
+fig.suptitle(r'Rayleigh-Benard Modes Eigenfunctions ($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f$)' %(Rayleigh, Prandtl))
+#Titles
+ax_b.title.set_text('Bouyancy')
+ax_p.title.set_text('Pressure')
+ax_x.title.set_text(r'$\text{u}_x$')
+ax_z.title.set_text(r'$\text{u}_z$')
+#Axes labels
+    #
+ax1.set_ylabel(r'$\omega$')
+ax2.set_ylabel(r'$\text{f}$')
+ax2.set_xlabel(r'$k_x$')
+
+#Growth Rates
+ax1.scatter(kx_global, growth_global)
+plt.tight_layout()
+
+#Mode frequency 
+
+ax2.scatter(kx_global, freq_global)
+plt.tight_layout()
+
+#Figure Saving
 plt.plot(z, b['g'].real, label='real')
 plt.plot(z, b['g'].imag, label='imag')
 plt.legend()

@@ -14,5 +14,5 @@ cp $config $name
 cp $solver $name
 cp $template $name/$name.sh
 cd $name 
-sbatch $template > submit_message.txt
+sbatch $name.sh > submit_message.txt
 cat submit_message.txt

@@ -142,11 +142,11 @@ if __name__ == "__main__":
 
     # Parameters
     Nz = 64
-    Rayleigh = 1000
+    Rayleigh = 1000000
     Prandtl = 1
     kx_global = np.linspace(0.001, 4, 50)
     NEV = 1
-    A = 1.8
+    A = 0
     ad = 0
     # Compute growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
