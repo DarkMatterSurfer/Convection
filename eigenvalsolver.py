@@ -82,8 +82,8 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A, ad, NEV=10, target=0):
     adiabat_mean = ad
     pi = np.pi
     A_ad = A
-    sig = 200
-    adiabat_arr = (adiabat_mean+(2/pi)*A_ad*((-pi/2)+(np.arctan(sig*(z-0.5)**2)))) #Adiabat
+    sig = 0.01
+    adiabat_arr = adiabat_mean-A_ad*(1/sig)/((2*pi)**0.5)*np.exp((-1/2)*(((z-0.5)**2)/sig**2)) #Adiabat
     nabad['g']=adiabat_arr
     arr_Ad = nabad.gather_data()
     # Problem
@@ -98,29 +98,6 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A, ad, NEV=10, target=0):
     problem.add_equation("b(z=Lz) = 0")
     problem.add_equation("u(z=Lz) = 0")
     problem.add_equation("integ(p) = 0") # Pressure gauge
-
-    # b['g']=(1j+1)*(z*(z-1)*(z-0.5))
-    # b_mode = (b*mode).evaluate()
-    # if rank == 0:
-    #     #Plotting eigenfunction
-    #     fig, ax = plt.subplots()
-    #     print(np.shape(X))
-    #     print(np.shape(b_mode['g']))
-    #     print(np.shape(z))
-    #     sys.exit()
-    #     c = ax.pcolormesh(x,z,b_mode['g'], cmap='RdBu')
-    #     ax.set_title('pcolormesh')
-    #     # set the limits of the plot to the limits of the data
-    #     ax.axis([x.min(), x.max()])
-    #     fig.colorbar(c, ax=ax)
-
-    #     # plt.plot(z[0,:],b_mode['g'][0,:])
-    #     plt.show()
-    #     plt.close()
-    # # b = solver.state[1]
-    # # print(b['g'])
-    # # print(b_mode['g'].shape)
-    # # print(b_mode['g'])
 
     plt.plot(arr_z[0,:],arr_Ad[0,:])
     plt.ylim(0,4)
@@ -142,13 +119,14 @@ if __name__ == "__main__":
 
     # Parameters
     Nz = 64
-    Rayleigh = 1000000
-    Prandtl = 1
+    Rayleigh = 1000
+    Prandtl =  1
     kx_global = np.linspace(0.001, 4, 50)
     NEV = 1
-    A = 0
+
+    A = 0.39999999999999963
     ad = 0
-    # Compute growth rate over local wavenumbers
+    # Compu te growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
     t1 = time.time()
     # for all 
