@@ -90,66 +90,68 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A, ad, NEV=10, target=0):
     problem.add_equation("u(z=Lz) = 0")
     problem.add_equation("integ(p) = 0") # Pressure gauge
 
-    plt.plot(arr_z[0,:],arr_Ad[0,:])
-    plt.ylim(0,4)
-    plt.xlim(0,1)
-    plt.show()
-    plt.savefig('/home/iiw7750/Convection/adaibattempgrad.png')
-    plt.close()
+    # plt.plot(arr_z[0,:],arr_Ad[0,:])
+    # plt.ylim(0,4)
+    # plt.xlim(0,1)
+    # plt.show()
+    # plt.savefig('/home/iiw7750/Convection/adaibattempgrad.png')
+    # plt.close()
     # Solver
     solver = problem.build_solver(entry_cutoff=0)
     solver.solve_sparse(solver.subproblems[1], NEV, target=target)
     return solver.eigenvalues
 
 def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad, NEV=10):
-    if __name__ == "__main__":
 
-            import time
-            import matplotlib.pyplot as plt
-            comm = MPI.COMM_WORLD
-            # Compute growth rate over local wavenumbers
-            kx_local = kx_global[comm.rank::comm.size]
-            t1 = time.time()
-            # for all 
-            growth_locallist = []
-            frequecny_locallist = []
-            for kx in kx_local:
-                eigenvals = geteigenval(Rayleigh, Prandtl, kx, Nz,A,ad, NEV=NEV) #np.array of complex
-                eigenlen = len(eigenvals)
-                gr_max = -1*np.inf
-                max_index = -1
-                for i in range(eigenlen):
-                    if -1*(eigenvals[i].real) > gr_max:
-                        gr_max=-1*(eigenvals[i].real)
-                        max_index = i
-                eigenvals[max_index].imag
-                freq = eigenvals[max_index].imag
-                growth_locallist.append(gr_max)
-                frequecny_locallist.append(freq)
-            #    growth_locallist.append(np.max())
-            growth_local = np.array(growth_locallist)
-            freq_local = np.array(frequecny_locallist)
-            t2 = time.time()
-            logger.info('Elapsed solve time: %f' %(t2-t1))
 
-            # Reduce growth rates to root process
-            growth_global = np.zeros_like(kx_global)
-            growth_global[comm.rank::comm.size] = growth_local
-            if comm.rank == 0:
-                comm.Reduce(MPI.IN_PLACE, growth_global, op=MPI.SUM, root=0)
-            else:
-                comm.Reduce(growth_global, growth_global, op=MPI.SUM, root=0)
+    import time
+    import matplotlib.pyplot as plt
+    comm = MPI.COMM_WORLD
+    # Compute growth rate over local wavenumbers
+    kx_local = kx_global[comm.rank::comm.size]
+    t1 = time.time()
+    # for all 
+    growth_locallist = []
+    frequecny_locallist = []
+    for kx in kx_local:
+        eigenvals = geteigenval(Rayleigh, Prandtl, kx, Nz,A,ad, NEV=NEV) #np.array of complex
+        eigenlen = len(eigenvals)
+        gr_max = -1*np.inf
+        max_index = -1
+        for i in range(eigenlen):
+            if -1*(eigenvals[i].real) > gr_max:
+                gr_max=-1*(eigenvals[i].real)
+                max_index = i
+        eigenvals[max_index].imag
+        freq = eigenvals[max_index].imag
+        growth_locallist.append(gr_max)
+        frequecny_locallist.append(freq)
+    #    growth_locallist.append(np.max())
+    growth_local = np.array(growth_locallist)
+    freq_local = np.array(frequecny_locallist)
+    t2 = time.time()
+    logger.info('Elapsed solve time: %f' %(t2-t1))
 
-            freq_global = np.zeros_like(kx_global)
-            freq_global[comm.rank::comm.size] = freq_local
-            if comm.rank == 0:
-                comm.Reduce(MPI.IN_PLACE, freq_global, op=MPI.SUM, root=0)
-            else:
-                comm.Reduce(freq_global, freq_global, op=MPI.SUM, root=0)
-                
-            ratelist=[]
-            for i in growth_global:
-                ratelist.append(i)
+    # Reduce growth rates to root process
+    growth_global = np.zeros_like(kx_global)
+    growth_global[comm.rank::comm.size] = growth_local
+    if comm.rank == 0:
+        comm.Reduce(MPI.IN_PLACE, growth_global, op=MPI.SUM, root=0)
+    else:
+        comm.Reduce(growth_global, growth_global, op=MPI.SUM, root=0)
+
+    freq_global = np.zeros_like(kx_global)
+    freq_global[comm.rank::comm.size] = freq_local
+    if comm.rank == 0:
+        comm.Reduce(MPI.IN_PLACE, freq_global, op=MPI.SUM, root=0)
+    else:
+        comm.Reduce(freq_global, freq_global, op=MPI.SUM, root=0)
+    ratelist=[]
+    comm.barrier()
+    
+    comm.Bcast(growth_global,root=0)
+    for i in growth_global:
+        ratelist.append(i)
     return ratelist
 # Parameters
 Nz = 64
@@ -157,7 +159,7 @@ Rayleigh = config.getfloat('param', 'Ra')
 Prandtl = config.getfloat('param', 'Pr')
 kappa = (Rayleigh * Prandtl)**(-1/2)
 nu = (Rayleigh / Prandtl)**(-1/2)
-kx_global = np.linspace(0.001, 4, 50)
+kx_global = np.linspace(0.001, 4, 10)
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)
@@ -169,7 +171,7 @@ A = config.getfloat('param','A')
 ad = config.getfloat('param', 'adiabat_mean')  
 epsilon = 0.1
 #Search parameters
-tol = 0.001
+tol = 0.00001
 counter = 0
 counter_tol = 10
 growthrateslist=getgrowthrates(Rayleigh, Prandtl, Nz, A, ad, NEV=10)
@@ -187,25 +189,32 @@ minusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A-epsilon, ad, NEV=10)
 ampomeg_minus=max(minusamp_list)
 omeg_guess = np.inf
 while abs(0-omeg_guess) > tol:
+    print('rank={}'.format(rank))
     ispluscloser = abs(ampomeg_plus) < abs(ampomeg_minus)
     A_guess = (A_plus*(ampomeg_minus)-A_minus*(ampomeg_plus))/(ampomeg_minus-ampomeg_plus)
     finalrates = getgrowthrates(Rayleigh, Prandtl, Nz, A_guess, ad, NEV=10)
     omeg_guess = max(finalrates)
     if ispluscloser: 
-        A_minus = A_guess
+        A_minus = A_guess 
+        A = A_guess
         ampomeg_minus = omeg_guess
     else:
         A_plus = A_guess
         ampomeg_plus = omeg_guess
+        A = A_guess
+    counter=counter+1
     if rank == 0:
         print('Iteration #:', str(counter) + '\n\n')
-    counter=counter+1
+        print("ampomeg_plus={}".format(ampomeg_plus))
+        print("ampomeg_minus={}".format(ampomeg_minus))
+        print("omeg_guess={}".format(omeg_guess))
 if abs(0-omeg_guess) < tol: 
     if rank == 0:
         print(finalrates)
+        print(wavenum_list)
     for i in range(len(finalrates)):
         omega_final = finalrates[i]
-        if omega_final == max_omeg:
+        if omega_final == omeg_guess:
             maxomeg_kx = wavenum_list[i]
     if rank == 0:
         print("Condtions for marginal stability:")
