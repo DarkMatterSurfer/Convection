@@ -167,9 +167,9 @@ maxomeg_kx = 0
 NEV = 1
 A = config.getfloat('param','A')
 ad = config.getfloat('param', 'adiabat_mean')  
-epsilon = 0.05
+epsilon = 0.1
 #Search parameters
-tol = 0.01
+tol = 0.001
 counter = 0
 counter_tol = 10
 growthrateslist=getgrowthrates(Rayleigh, Prandtl, Nz, A, ad, NEV=10)
@@ -179,35 +179,38 @@ max_omeg = max(growthrateslist)
 if rank == 0:
     print('intial parameters maximum growth rate',max_omeg)
 #Finding marginal stability
-while abs(0-max_omeg) > tol:
-    plusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A+epsilon, ad, NEV=10)
-    ampomeg_plus=max(plusamp_list)
-    minusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A-epsilon, ad, NEV=10)
-    ampomeg_minus=max(minusamp_list)
-    if abs(0-max_omeg)>abs(0-ampomeg_plus):
-        A = (A+epsilon+A)/2
-        finalrates = plusamp_list
-        max_omeg = ampomeg_plus
-        if rank == 0:
-            print('New max omega:', str(max_omeg)+'\n\n')
-    elif abs(0-max_omeg)>abs(0-ampomeg_minus):
-        A = (A-epsilon+A)/2
-        finalrates = minusamp_list
-        max_omeg = ampomeg_minus
-        if rank == 0:
-            print('New max omega:', str(max_omeg)+'\n\n')
-            
+A_plus = A+epsilon
+A_minus= A-epsilon
+plusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A+epsilon, ad, NEV=10)
+ampomeg_plus=max(plusamp_list) 
+minusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A-epsilon, ad, NEV=10)
+ampomeg_minus=max(minusamp_list)
+omeg_guess = np.inf
+while abs(0-omeg_guess) > tol:
+    ispluscloser = abs(ampomeg_plus) < abs(ampomeg_minus)
+    A_guess = (A_plus*(ampomeg_minus)-A_minus*(ampomeg_plus))/(ampomeg_minus-ampomeg_plus)
+    finalrates = getgrowthrates(Rayleigh, Prandtl, Nz, A_guess, ad, NEV=10)
+    omeg_guess = max(finalrates)
+    if ispluscloser: 
+        A_minus = A_guess
+        ampomeg_minus = omeg_guess
+    else:
+        A_plus = A_guess
+        ampomeg_plus = omeg_guess
     if rank == 0:
         print('Iteration #:', str(counter) + '\n\n')
     counter=counter+1
-    if abs(0-max_omeg)<tol:
-        for i in range(len(finalrates)):
-            if max(finalrates) == max_omeg:
-                maxomeg_kx = wavenum_list[i]
-        if rank == 0:
-            print("Condtions for marginal stability:")
-            print('Rayleigh Number:', Rayleigh)
-            print('Prandtl Number:', Prandtl)
-            print('Adiabat:', ad)
-            print('Amplitude:', A)
-            print('Wavenumber (kx) for maximum growth rate:', maxomeg_kx)
+if abs(0-omeg_guess) < tol: 
+    if rank == 0:
+        print(finalrates)
+    for i in range(len(finalrates)):
+        omega_final = finalrates[i]
+        if omega_final == max_omeg:
+            maxomeg_kx = wavenum_list[i]
+    if rank == 0:
+        print("Condtions for marginal stability:")
+        print('Rayleigh Number:', Rayleigh)
+        print('Prandtl Number:', Prandtl)
+        print('Adiabat:', ad)
+        print('Amplitude:', A)
+        print('Wavenumber (kx) for maximum growth rate:', maxomeg_kx)

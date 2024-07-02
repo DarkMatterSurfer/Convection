@@ -124,7 +124,7 @@ if __name__ == "__main__":
     kx_global = np.linspace(0.001, 4, 50)
     NEV = 1
 
-    A = 0.39999999999999963
+    A = 0.4
     ad = 0
     # Compu te growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]

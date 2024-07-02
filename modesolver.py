@@ -9,14 +9,14 @@ comm = MPI.COMM_WORLD
 
 # Parameters
 Nz = 64
-Rayleigh = 100
+Rayleigh = 1000
 Prandtl = 1
-kx = 3.45
+kx = 3.1022653061224488
 NEV = 10
 Lz = 1
 target = 0
 ad =0
-A = 8
+A = 0.39999999999999963
 # Bases
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128)
