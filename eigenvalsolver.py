@@ -100,10 +100,7 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A, ad, NEV=10, target=0):
     problem.add_equation("integ(p) = 0") # Pressure gauge
 
     plt.plot(arr_z[0,:],arr_Ad[0,:])
-    plt.ylim(0,4)
-    plt.xlim(0,1)
-    plt.show()
-    plt.savefig('/home/iiw7750/Convection/adaibattempgrad.png')
+    plt.savefig('/home/brogers/Convection/adiabatparam.png')
     plt.close()
     # Solver
     solver = problem.build_solver(entry_cutoff=0)
@@ -121,10 +118,10 @@ if __name__ == "__main__":
     Nz = 64
     Rayleigh = 1000
     Prandtl =  1
-    kx_global = np.linspace(0.001, 4, 50)
+    kx_global = np.linspace(0.001, 4,50 )
     NEV = 1
 
-    A = 0.4
+    A = 0.3338842424900552
     ad = 0
     # Compu te growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
@@ -189,6 +186,6 @@ if __name__ == "__main__":
 
         #Figure Saving
         filename = 'Ad_'+str(ad)+'Amp_'+str(A)+'_eigenval_plot.png'
-        plt.savefig("/home/iiw7750/Convection/eigenvalprob_plots/"+"Ra"+str(Rayleigh)+"Pr"+str(Prandtl)+"/"+filename)
+        plt.savefig("/home/Convection/eigenvalprob_plots/"+"Ra"+str(Rayleigh)+"Pr"+str(Prandtl)+"/"+filename)
         print(filename)
         plt.close()

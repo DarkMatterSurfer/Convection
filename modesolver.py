@@ -6,7 +6,8 @@ logger = logging.getLogger(__name__)
 import time
 import matplotlib.pyplot as plt
 comm = MPI.COMM_WORLD
-
+import os
+path = os.path.dirname(os.path.abspath(__file__))
 # Parameters
 Nz = 64
 Rayleigh = 1000
@@ -122,7 +123,7 @@ fig.colorbar(c, ax=ax)
 
 folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
 fig.tight_layout()
-plt.savefig("/home/iiw7750/Convection/eigenvalprob_plots/"+folderstring+"/rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+plt.savefig("/home/Convection/eigenvalprob_plots/"+folderstring+"/rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
 plt.close()
 
 #Eigenmodes plot
@@ -163,4 +164,4 @@ ax_z.plot(z, uz['g'].imag)
 plt.tight_layout()
 
 #Figure Saving
-plt.savefig("/home/iiw7750/Convection/eigenvalprob_plots/"+folderstring+"/rbcmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+plt.savefig("/home/Convection/eigenvalprob_plots/"+folderstring+"/rbcmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")

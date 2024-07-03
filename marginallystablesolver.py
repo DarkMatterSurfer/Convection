@@ -13,6 +13,7 @@ from docopt import docopt
 import sys
 import os 
 path = os.path.dirname(os.path.abspath(__file__))
+from scipy.optimize import minimize_scalar
 # configfile = path +"/options.cfg"
 # args = docopt(__doc__)
 if len(sys.argv) < 2:
@@ -77,7 +78,7 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A, ad, NEV=10, target=0):
     adiabat_arr = adiabat_mean-A_ad*(1/sig)/((2*pi)**0.5)*np.exp((-1/2)*(((z-0.5)**2)/sig**2)) #Adiabat
     nabad['g']=adiabat_arr
     arr_Ad = nabad.gather_data()
-    # Problem
+    # Problem                                                c
     # First-order form: "div(f)" becomes "trace(grad_f)"
     # First-order form: "lap(f)" becomes "div(grad_f)"
     problem = d3.EVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals(), eigenvalue=omega)
@@ -89,13 +90,12 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A, ad, NEV=10, target=0):
     problem.add_equation("b(z=Lz) = 0")
     problem.add_equation("u(z=Lz) = 0")
     problem.add_equation("integ(p) = 0") # Pressure gauge
-
-    # plt.plot(arr_z[0,:],arr_Ad[0,:])
-    # plt.ylim(0,4)
-    # plt.xlim(0,1)
-    # plt.show()
-    # plt.savefig('/home/iiw7750/Convection/adaibattempgrad.png')
-    # plt.close()
+    if rank == 0:
+        plt.plot(arr_z[0,:],arr_Ad[0,:])
+        plt.ylim(0,4)
+        plt.xlim(0,1)
+        plt.savefig(path+'adaibattempgrad.png')
+        plt.close()
     # Solver
     solver = problem.build_solver(entry_cutoff=0)
     solver.solve_sparse(solver.subproblems[1], NEV, target=target)
@@ -159,7 +159,7 @@ Rayleigh = config.getfloat('param', 'Ra')
 Prandtl = config.getfloat('param', 'Pr')
 kappa = (Rayleigh * Prandtl)**(-1/2)
 nu = (Rayleigh / Prandtl)**(-1/2)
-kx_global = np.linspace(0.001, 4, 10)
+kx_global = np.linspace(0.001, 4, 20)
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)
@@ -178,6 +178,7 @@ growthrateslist=getgrowthrates(Rayleigh, Prandtl, Nz, A, ad, NEV=10)
 # if rank == 0:
 #     print(growthrateslist)
 max_omeg = max(growthrateslist)
+results = []
 if rank == 0:
     print('intial parameters maximum growth rate',max_omeg)
 #Finding marginal stability
@@ -188,6 +189,14 @@ ampomeg_plus=max(plusamp_list)
 minusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A-epsilon, ad, NEV=10)
 ampomeg_minus=max(minusamp_list)
 omeg_guess = np.inf
+# def rooter(amp_arg):
+#     print('Amplitude:',amp_arg)
+#     omega = max(getgrowthrates(Rayleigh, Prandtl, Nz, amp_arg, ad, NEV=10))
+#     print('Omega:',omega)
+#     return omega
+# result = minimize_scalar(rooter,bounds=(0,2 ), method='bounded',tol=0.0001)
+# print(result.x)
+# sys.exit()
 while abs(0-omeg_guess) > tol:
     print('rank={}'.format(rank))
     ispluscloser = abs(ampomeg_plus) < abs(ampomeg_minus)
