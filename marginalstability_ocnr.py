@@ -17,8 +17,12 @@ import time
 # configfile = path +"/options.cfg"
 # args = docopt(__doc__)
 if len(sys.argv) < 2:
-    print('please provide config file')
-    raise
+    # raise
+    try:
+        configfile = path + "/options.cfg"
+    except:
+        print('please provide config file')
+        raise
 else:
     configfile = sys.argv[1]
 #Config file
@@ -77,7 +81,7 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,NEV=10, targe
     adiabat_arr = adiabat_mean-A_ad*(1/sig)/((2*pi)**0.5)*np.exp((-1/2)*(((z-0.5)**2)/sig**2)) #Adiabat
     nabad['g']=adiabat_arr
     arr_Ad = nabad.gather_data()
-    # Problem                                                
+    # Problem                                                c
     # First-order form: "div(f)" becomes "trace(grad_f)"
     # First-order form: "lap(f)" becomes "div(grad_f)"
     problem = d3.EVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals(), eigenvalue=omega)
@@ -89,12 +93,12 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,NEV=10, targe
     problem.add_equation("b(z=Lz) = 0")
     problem.add_equation("u(z=Lz) = 0")
     problem.add_equation("integ(p) = 0") # Pressure gauge
-    if rank == 0:
-        plt.plot(arr_z[0,:],arr_Ad[0,:])
-        plt.ylim(0,4)
-        plt.xlim(0,1)
-        plt.savefig(path+'/'+name+'/adaibattempgrad.png')
-        plt.close()
+    # if rank == 0:
+    #     plt.plot(arr_z[0,:],arr_Ad[0,:])
+    #     plt.ylim(0,4)
+    #     plt.xlim(0,1)
+    #     plt.savefig(path+'/'+name+'/adaibattempgrad.png')
+    #     plt.close()
     # Solver
     solver = problem.build_solver(entry_cutoff=0)
     solver.solve_sparse(solver.subproblems[1], NEV, target=target)
@@ -151,7 +155,7 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=10, target=0):
 
 def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
     counter = 0
-    # counter_tol = 10
+    counter_tol = 10
     growthrateslist=getgrowthrates(Rayleigh, Prandtl, Nz, A, ad,sig, NEV=10, target = 0)
     if rank == 0:
         print('Intial Growth Rates:',growthrateslist)
@@ -196,6 +200,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
             print("ampomeg_minus={}".format(ampomeg_minus))
             print("omeg_guess={}".format(omeg_guess))
             print("A={}".format(A_guess))
+            print("tol={}".format(tol))
     if abs(0-omeg_guess) < tol: 
         if rank == 0:
             print(finalrates)
@@ -205,25 +210,28 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
             if omega_final == omeg_guess:
                 maxomeg_kx = wavenum_list[i]
         if rank == 0:
+            print("###################################################################################")
+            print("###################################################################################")
             print("Condtions for marginal stability:")
             print('Rayleigh Number:', Rayleigh)
             print('Prandtl Number:', Prandtl)
             print('Adiabat:', ad)
             print('Amplitude:', A)
-            print('Sigma:',sig)
             print('Wavenumber (kx) for maximum growth rate:', maxomeg_kx)
+            print("###################################################################################")
+            print("###################################################################################")
         results = [Rayleigh, sig,maxomeg_kx, A]
     return results 
 
-def modesolver(Rayleigh, Prandtl, Nz, adiabat_mean, sig, A_ad):
-    print('Mode conditions:\n')
+def modesolver(Rayleigh, Prandtl, Nz, adiabat_mean, sig, A_ad, kx):
+    print('Mode conditions:\n\n')
     print('Rayleigh:', Rayleigh)
-    print('Sig:', str(sig)+'\n')
+    print('Sig:', sig)
     Lz = 1
     #Wavenumber 
-    stability_results = findmarginalomega(Rayleigh,Prandtl,Nz,A_ad,adiabat_mean,sig)
-    kx = stability_results[2]
-    A_ad = stability_results[3]
+    # stability_results = findmarginalomega(Rayleigh,Prandtl,Nz,A_ad,adiabat_mean,sig)
+    # kx = stability_results[2]
+    # A_ad = stability_results[3]
     # Bases
     zcoord = d3.Coordinate('z')
     dist = d3.Distributor(zcoord, dtype=np.complex128)
@@ -302,13 +310,10 @@ def modesolver(Rayleigh, Prandtl, Nz, adiabat_mean, sig, A_ad):
     return b_mode
 
 # Parameters
-Nz = 64
+Nz = 128
 Rayleigh = config.getfloat('param', 'Ra') 
 Prandtl = config.getfloat('param', 'Pr')
-kappa = (Rayleigh * Prandtl)**(-1/2)
-nu = (Rayleigh / Prandtl)**(-1/2)
-kx_global = np.linspace(0.001, 4, 10)
-kx_global = np.linspace(0.001, 4, 5)
+kx_global = np.linspace(0.001, 6, 8)
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)
@@ -317,18 +322,18 @@ if rank == 0:
     print('Wavenumbers :',wavenum_list)
 NEV = 1
 A = config.getfloat('param','A')
-sig = config.getfloat('param','sig')
+sig = sig_og = config.getfloat('param','sig')
 ad = config.getfloat('param', 'adiabat_mean')  
 epsilon = 0.1
 #Search parameters
-tol = 0.00001
+tol = 0.001
 
-findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-sys.exit()
 #Plotting
 # Bases
 zcoord = d3.Coordinate('z')
-dist = d3.Distributor(zcoord, dtype=np.complex128)
+dist = 0
+if rank == 0:
+    dist = d3.Distributor(zcoord, dtype=np.complex128)
 zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, 1))
 z = dist.local_grid(zbasis)
 arr_x = np.linspace(0,4,256)
@@ -336,36 +341,60 @@ arr_x = np.linspace(0,4,256)
 #Top left corner
 fig, axs = plt.subplots(2, 2)
 ax = axs[0, 0]
-c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='RdBu') 
 ax.set_ylabel('Ra='+str(Rayleigh))
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+#Mode paramaters
+A = margsoln[3]
+kx = margsoln[2]
+if rank == 0:
+    soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+c = ax.pcolormesh(arr_x,z,soln, cmap='RdBu') 
 fig.tight_layout()
 fig.colorbar(c, ax=ax)
+
 #Top right corner
+ax = axs[0, 1]
 Rayleigh=1e3
 sig=0.02
-ax = axs[0, 1]
-c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A),cmap='RdBu') 
-fig.tight_layout()
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+#Mode paramaters
+A = margsoln[3]
+kx = margsoln[2]
+if rank == 0:
+    soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
 fig.colorbar(c, ax=ax)
+
 #Bottom left corner
-Rayleigh=1710
-sig=0.01
 ax = axs[1, 0]
-c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='RdBu')
+ax.set_xlabel(r'$\sig=$'+str(sig))
+Rayleigh=10
 ax.set_ylabel('Ra='+str(Rayleigh))
-ax.set_xlabel(r'$\sig=\$'+str(sig))
-fig.tight_layout()
+sig=sig_og
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+#Mode paramaters
+A = margsoln[3]
+kx = margsoln[2]
+if rank == 0:
+    soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
 fig.colorbar(c, ax=ax)
+
 #Bottom right corner
-Rayleigh=1710
-sig=0.02
 ax = axs[1, 1]
-c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='RdBu')
-ax.set_xlabel(r'$\sig=\$'+str(sig))
+ax.set_xlabel(r'$\sig=$'+str(sig))
+Rayleigh=10
+sig=0.02
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+#Mode paramaters
+A = margsoln[3]
+kx = margsoln[2]
+if rank == 0:
+    soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
 fig.colorbar(c, ax=ax)
 
 folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
-fig.tight_layout()
 plt.savefig(path+"/multipanelheatmode.png")
 if rank == 0:
     print(path+"/multipanelheatmode.png")
