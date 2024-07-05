@@ -12,12 +12,13 @@ path = os.path.dirname(os.path.abspath(__file__))
 Nz = 64
 Rayleigh = 1000
 Prandtl = 1
-kx = 3.1022653061224488
+kx = 3.00025
 NEV = 10
 Lz = 1
 target = 0
 ad =0
-A = 0.39999999999999963
+A = 1.1745227284548567
+sig = 0.02
 # Bases
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128)
@@ -55,7 +56,6 @@ dz = lambda A: d3.Differentiate(A, zcoord)
 adiabat_mean = ad
 pi = np.pi
 A_ad = A
-sig = 0.01
 adiabat_arr = adiabat_mean-A_ad*(1/sig)/((2*pi)**0.5)*np.exp((-1/2)*(((z-0.5)**2)/sig**2))#Adiabat
 nabad['g']=adiabat_arr
 
@@ -123,7 +123,7 @@ fig.colorbar(c, ax=ax)
 
 folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
 fig.tight_layout()
-plt.savefig("/home/Convection/eigenvalprob_plots/"+folderstring+"/rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+plt.savefig(path+"/eigenvalprob_plots/"+folderstring+"/rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
 plt.close()
 
 #Eigenmodes plot
@@ -164,4 +164,4 @@ ax_z.plot(z, uz['g'].imag)
 plt.tight_layout()
 
 #Figure Saving
-plt.savefig("/home/Convection/eigenvalprob_plots/"+folderstring+"/rbcmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+plt.savefig(path+"/eigenvalprob_plots/"+folderstring+"/rbcmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")

@@ -9,11 +9,11 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 import matplotlib.pyplot as plt
-from docopt import docopt
 import sys
 import os 
 path = os.path.dirname(os.path.abspath(__file__))
 from scipy.optimize import minimize_scalar
+import time
 # configfile = path +"/options.cfg"
 # args = docopt(__doc__)
 if len(sys.argv) < 2:
@@ -25,28 +25,8 @@ else:
 config = ConfigParser()
 config.read(str(configfile))
 name = config.get('param', 'name')
-# Parameters
-Nz = 64
-Rayleigh = config.getfloat('param', 'Ra') 
-Prandtl = config.getfloat('param', 'Pr')
-kappa = (Rayleigh * Prandtl)**(-1/2)
-nu = (Rayleigh / Prandtl)**(-1/2)
-kx_global = np.linspace(0.001, 4, 10)
-wavenum_list = []
-for i in kx_global:
-    wavenum_list.append(i)
-maxomeg_kx = 0
-if rank == 0:
-    print('Wavenumbers :',wavenum_list)
-NEV = 1
-A = config.getfloat('param','A')
-sig = config.getfloat('param','sig')
-ad = config.getfloat('param', 'adiabat_mean')  
-epsilon = 0.1
-#Search parameters
-tol = 0.00001
-counter = 0
-counter_tol = 10
+# kappa = (Rayleigh * Prandtl)**(-1/2)
+# nu = (Rayleigh / Prandtl)**(-1/2)
 #Eigenvalue Spectrum Function
 def geteigenval(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,NEV=10, target=0):
     """Compute maximum linear growth rate."""
@@ -121,8 +101,6 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,NEV=10, targe
     return solver.eigenvalues
 
 def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=10, target=0):
-    import time
-    import matplotlib.pyplot as plt
     comm = MPI.COMM_WORLD
     # Compute growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
@@ -217,6 +195,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
             print("ampomeg_plus={}".format(ampomeg_plus))
             print("ampomeg_minus={}".format(ampomeg_minus))
             print("omeg_guess={}".format(omeg_guess))
+            print("A={}".format(A_guess))
     if abs(0-omeg_guess) < tol: 
         if rank == 0:
             print(finalrates)
@@ -321,6 +300,24 @@ def modesolver(Rayleigh, Prandtl, Nz, adiabat_mean, sig, A_ad):
     b_mode=(np.outer(b['g'],mode)*phaser).real
     return b_mode
 
+# Parameters
+Nz = 64
+Rayleigh = config.getfloat('param', 'Ra') 
+Prandtl = config.getfloat('param', 'Pr')
+kx_global = np.linspace(0.001, 4, 5)
+wavenum_list = []
+for i in kx_global:
+    wavenum_list.append(i)
+maxomeg_kx = 0
+if rank == 0:
+    print('Wavenumbers :',wavenum_list)
+NEV = 1
+A = config.getfloat('param','A')
+sig = config.getfloat('param','sig')
+ad = config.getfloat('param', 'adiabat_mean')  
+epsilon = 0.1
+#Search parameters
+tol = 0.00001
 
 #Plotting
 # Bases
@@ -333,34 +330,37 @@ arr_x = np.linspace(0,4,256)
 #Top left corner
 fig, axs = plt.subplots(2, 2)
 ax = axs[0, 0]
-c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='RdBu') #buoyancy
+c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='RdBu') 
 ax.set_ylabel('Ra='+str(Rayleigh))
+fig.tight_layout()
 fig.colorbar(c, ax=ax)
 #Top right corner
 Rayleigh=1e3
 sig=0.02
 ax = axs[0, 1]
-c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A),cmap='RdBu') #pressure
+c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A),cmap='RdBu') 
+fig.tight_layout()
 fig.colorbar(c, ax=ax)
 #Bottom left corner
-Rayleigh=1e4
+Rayleigh=1710
 sig=0.01
 ax = axs[1, 0]
-c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='viridis')
+c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='RdBu')
 ax.set_ylabel('Ra='+str(Rayleigh))
 ax.set_xlabel(r'$\sig=\$'+str(sig))
+fig.tight_layout()
 fig.colorbar(c, ax=ax)
 #Bottom right corner
-Rayleigh=1e4
+Rayleigh=1710
 sig=0.02
 ax = axs[1, 1]
-c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='autumn') #uz
+c = ax.pcolor(arr_x,z,modesolver(Rayleigh,Prandtl,Nz,ad,sig,A), cmap='RdBu')
 ax.set_xlabel(r'$\sig=\$'+str(sig))
 fig.colorbar(c, ax=ax)
 
 folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
 fig.tight_layout()
-plt.savefig(path+"/multipanelheatmdoe.png")
+plt.savefig(path+"/multipanelheatmode.png")
 if rank == 0:
     print(path+"/multipanelheatmode.png")
 plt.close()
