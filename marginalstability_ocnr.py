@@ -50,7 +50,7 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,NEV=10, targe
     omega = dist.Field(name='omega')
     p = dist.Field(name='p', bases=(xbasis,zbasis))
     b = dist.Field(name='b', bases=(xbasis,zbasis))
-    mode = dist.Field(name="mode",bases=(Xbasis,))
+    # mode = dist.Field(name="mode",bases=(Xbasis,))
     u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
     nabad = dist.Field(name="nabad",bases=(zbasis, ))
     tau_p = dist.Field(name='tau_p')
@@ -71,7 +71,7 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,NEV=10, targe
     lift = lambda A: d3.Lift(A, lift_basis, -1)
     grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
     grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
-    mode['g']=np.exp(1j*kx*X) #Eigenmode
+    # mode['g']=np.exp(1j*kx*X) #Eigenmode
 
     #A~ eigenfunc(A)*e^(ikx-omegat*t)
     dt = lambda A: -1*omega*A #Ansatz for dt
@@ -303,7 +303,7 @@ def modesolver(Rayleigh, Prandtl, Nz, adiabat_mean, sig, A_ad, kx):
     b.change_scales(1)
     #Heat Map
     pi=np.pi
-    phase=1
+    phase=0
     phaser=np.exp(((1j*phase)*(2*pi))/4)
     #Modes
     b_mode=(np.outer(b['g'],mode)*phaser).real
@@ -313,7 +313,10 @@ def modesolver(Rayleigh, Prandtl, Nz, adiabat_mean, sig, A_ad, kx):
 Nz = 128
 Rayleigh = config.getfloat('param', 'Ra') 
 Prandtl = config.getfloat('param', 'Pr')
-kx_global = np.linspace(0.001, 6, 8)
+L_x = 4
+wavebound = 10
+pi=np.pi
+kx_global =(pi/2)*np.array([i+1 for i in range(wavebound)])
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)
@@ -341,6 +344,8 @@ arr_x = np.linspace(0,4,256)
 #Top left corner
 fig, axs = plt.subplots(2, 2)
 ax = axs[0, 0]
+ax.set_aspect(4)
+#ax.set_boxaspect()
 ax.set_ylabel('Ra='+str(Rayleigh))
 margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
 #Mode paramaters
@@ -352,47 +357,47 @@ c = ax.pcolormesh(arr_x,z,soln, cmap='RdBu')
 fig.tight_layout()
 fig.colorbar(c, ax=ax)
 
-#Top right corner
-ax = axs[0, 1]
-Rayleigh=1e3
-sig=0.02
-margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-#Mode paramaters
-A = margsoln[3]
-kx = margsoln[2]
-if rank == 0:
-    soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
-fig.colorbar(c, ax=ax)
+# #Top right corner
+# ax = axs[0, 1]
+# Rayleigh=1e3
+# sig=0.02
+# margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+# #Mode paramaters
+# A = margsoln[3]
+# kx = margsoln[2]
+# if rank == 0:
+#     soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+# c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
+# fig.colorbar(c, ax=ax)
 
-#Bottom left corner
-ax = axs[1, 0]
-ax.set_xlabel(r'$\sig=$'+str(sig))
-Rayleigh=10
-ax.set_ylabel('Ra='+str(Rayleigh))
-sig=sig_og
-margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-#Mode paramaters
-A = margsoln[3]
-kx = margsoln[2]
-if rank == 0:
-    soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
-fig.colorbar(c, ax=ax)
+# #Bottom left corner
+# ax = axs[1, 0]
+# ax.set_xlabel(r'$\sig=$'+str(sig))
+# Rayleigh=10
+# ax.set_ylabel('Ra='+str(Rayleigh))
+# sig=sig_og
+# margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+# #Mode paramaters
+# A = margsoln[3]
+# kx = margsoln[2]
+# if rank == 0:
+#     soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+# c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
+# fig.colorbar(c, ax=ax)
 
-#Bottom right corner
-ax = axs[1, 1]
-ax.set_xlabel(r'$\sig=$'+str(sig))
-Rayleigh=10
-sig=0.02
-margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-#Mode paramaters
-A = margsoln[3]
-kx = margsoln[2]
-if rank == 0:
-    soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
-fig.colorbar(c, ax=ax)
+# #Bottom right corner
+# ax = axs[1, 1]
+# ax.set_xlabel(r'$\sig=$'+str(sig))
+# Rayleigh=10
+# sig=0.02
+# margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+# #Mode paramaters
+# A = margsoln[3]
+# kx = margsoln[2]
+# if rank == 0:
+#     soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+# c = ax.pcolormesh(arr_x,z,soln,cmap='RdBu')
+# fig.colorbar(c, ax=ax)
 
 folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
 plt.savefig(path+"/multipanelheatmode.png")
