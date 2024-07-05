@@ -159,7 +159,7 @@ Rayleigh = config.getfloat('param', 'Ra')
 Prandtl = config.getfloat('param', 'Pr')
 kappa = (Rayleigh * Prandtl)**(-1/2)
 nu = (Rayleigh / Prandtl)**(-1/2)
-kx_global = np.linspace(0.001, 4, 20)
+kx_global = np.linspace(0.001, 4, 10)
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)
