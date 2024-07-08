@@ -98,9 +98,9 @@ pi=np.pi
 phase=1
 phaser=np.exp(((1j*phase)*(2*pi))/4)
 #Modes
-b['g']=b['g']-(2 * (z - 1/2))
+# b['g']=b['g']-(2 * (z - 1/2))
 b_mode=(np.outer(b['g'],mode)*phaser).real
-# b_mode = b['g']-(2 * (z - 1/2))
+b_mode = b_mode-2*(z[..., np.newaxis]-1/2)
 press_mode=(np.outer(p['g'],mode)*phaser).real
 ux_mode=(np.outer(ux['g'],mode)*phaser).real
 uz_mode=(np.outer(uz['g'],mode)*phaser).real
