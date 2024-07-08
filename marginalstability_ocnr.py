@@ -235,7 +235,7 @@ def modesolver(Rayleigh, Prandtl, Nz, adiabat_mean, sig, A_ad, kx):
     # A_ad = stability_results[3]
     # Bases
     zcoord = d3.Coordinate('z')
-    dist = d3.Distributor(zcoord, dtype=np.complex128)
+    dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
     zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, 1))
     z = dist.local_grid(zbasis)
     arr_x = np.linspace(0,4,256)
@@ -336,10 +336,11 @@ tol = 0.001
 
 #Plotting
 # Bases
+# dist = 00
+# if rank == 0:
 zcoord = d3.Coordinate('z')
-dist = 0
-if rank == 0:
-    dist = d3.Distributor(zcoord, dtype=np.complex128)
+dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
+
 zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, 1))
 z = dist.local_grid(zbasis)
 arr_x = np.linspace(0,4,Nx)
