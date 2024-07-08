@@ -333,7 +333,6 @@ ad = config.getfloat('param', 'adiabat_mean')
 epsilon = 0.1
 #Search parameters
 tol = 0.001
-
 #Plotting
 # Bases
 zcoord = d3.Coordinate('z')
