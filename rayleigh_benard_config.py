@@ -1,6 +1,7 @@
 
 from docopt import docopt
 from configparser import ConfigParser
+from dedalus.core import domain
 import numpy as np
 import dedalus.public as d3
 import logging
@@ -17,8 +18,10 @@ path = os.path.dirname(os.path.abspath(__file__))
 # configfile = path +"/options.cfg"
 # args = docopt(__doc__)
 if len(sys.argv) < 2:
+    if not os.path.isfile(path+'/options.cfg'):
+        raise
     print('please provide config file')
-    raise
+    configfile = path+'/options.cfg'
 else:
     configfile = sys.argv[1]
 
@@ -50,6 +53,8 @@ coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
 xbasis = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=dealias)
 zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz), dealias=dealias)
+domain = domain.Domain(dist, (xbasis,zbasis))
+slices_grid = dist.grid_layout.slices(domain, scales=1)
 #Operators
 dz = lambda A: d3.Differentiate(A, coords['z'])
 dx = lambda A: d3.Differentiate(A, coords['x'])
@@ -150,9 +155,8 @@ if rank == 0:
 # First-order form: "lap(f)" becomes "div(grad_f)"
 problem = d3.IVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals())
 problem.add_equation("trace(grad_u) + tau_p = 0")
-problem.add_equation("dt(b) - kappa*div(grad_b) + nabad*(u@ez) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b) + Q") #Bouyancy equation u@ez supercriticality of 2 
+problem.add_equation("dt(b) - kappa*div(grad_b) + nabad*(u@ez) + lift(tau_b2) = - u@grad(b) + div(koopa*grad_b)") #Bouyancy equation u@ez supercriticality of 2 
 problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = - u@grad(u)") #Momentum equation
-
 #Boundary conditions
 problem.add_equation("b(z=0) = 1")
 problem.add_equation("u(z=0) = 0")
@@ -176,6 +180,21 @@ if (state == 'none' ):
     b.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise intal parameters~
     b['g'] *= z * (Lz - z) # Damp noise at walls
     b['g'] += Lz - 2*z # Add linear background
+elif os.path.isfile(state):
+    isee = np.load(state, allow_pickle=True).astype(np.float64)
+    print(type(isee))
+    print(isee.shape)
+    #Buoyancy
+    b_mode_data = (isee[0,:,:]).transpose()[slices_grid]
+    b['g'] = b_mode_data - 2 * (z - 1/2)
+    # b['g']= (isee[0,:,:]).transpose()[slices_grid]
+    #Ux
+    ux = u['g'][0]=(isee[1,:,:]).transpose()[slices_grid]
+    #Uz
+    uz = u['g'][1]=(isee[2,:,:]).transpose()[slices_grid]
+    print('Buoyancy intial conditions:',b['g'])
+    print('Ux intial conditions:',ux)
+    print('Uz intial conditions:',uz)
 else:
     solver.load_state(state)
     solver.sim_time = 0.0

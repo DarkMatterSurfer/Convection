@@ -7,17 +7,18 @@ import time
 import matplotlib.pyplot as plt
 comm = MPI.COMM_WORLD
 import os
+import sys
 path = os.path.dirname(os.path.abspath(__file__))
 # Parameters
 Nz = 64
 Rayleigh = 1000
 Prandtl = 1
-kx = 3.00025
+kx = 3.141592653589793
 NEV = 10
 Lz = 1
 target = 0
 ad =0
-A = 1.1745227284548567
+A = 1.1681539683301085
 sig = 0.02
 # Bases
 zcoord = d3.Coordinate('z')
@@ -97,33 +98,47 @@ pi=np.pi
 phase=1
 phaser=np.exp(((1j*phase)*(2*pi))/4)
 #Modes
+b['g']=b['g']-(2 * (z - 1/2))
 b_mode=(np.outer(b['g'],mode)*phaser).real
+# b_mode = b['g']-(2 * (z - 1/2))
 press_mode=(np.outer(p['g'],mode)*phaser).real
 ux_mode=(np.outer(ux['g'],mode)*phaser).real
 uz_mode=(np.outer(uz['g'],mode)*phaser).real
 
-
+modeslist = [b_mode,ux_mode,uz_mode]
+np.save('modedata.npy', np.array(modeslist, dtype=object),allow_pickle=True)
+# sys.exit()
 fig, axs = plt.subplots(2, 2)
 ax = axs[0, 0]
+ax.set_aspect('equal')
+ax.set_adjustable('box', share=True)
 c = ax.pcolor(arr_x,z,b_mode, cmap='RdBu') #buoyancy
 ax.set_title('b')
 fig.colorbar(c, ax=ax)
+
 ax = axs[0, 1]
+ax.set_aspect('equal')
+ax.set_adjustable('box', share=True)
 c = ax.pcolor(arr_x,z,press_mode,cmap='inferno') #pressure
 ax.set_title('P')
 fig.colorbar(c, ax=ax)
 ax = axs[1, 0]
+ax.set_aspect('equal')
+ax.set_adjustable('box', share=True)
 c = ax.pcolor(arr_x,z,ux_mode, cmap='viridis')
 ax.set_title(r'$\text{u}_x$') #ux
 fig.colorbar(c, ax=ax)
+
 ax = axs[1, 1]
+ax.set_aspect('equal')
+ax.set_adjustable('box', share=True)
 c = ax.pcolor(arr_x,z,uz_mode, cmap='autumn') #uz
 ax.set_title(r'$\text{u}_z$')
 fig.colorbar(c, ax=ax)
 
 folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
-fig.tight_layout()
-plt.savefig(path+"/eigenvalprob_plots/"+folderstring+"/rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+name='TestRun'
+plt.savefig(path+"/eigenvalprob_plots/"+folderstring+"/"+name+"rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
 plt.close()
 
 #Eigenmodes plot
@@ -164,4 +179,4 @@ ax_z.plot(z, uz['g'].imag)
 plt.tight_layout()
 
 #Figure Saving
-plt.savefig(path+"/eigenvalprob_plots/"+folderstring+"/rbcmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+plt.savefig(path+"/eigenvalprob_plots/"+folderstring+"/"+name+"rbcmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
