@@ -8,87 +8,56 @@ import matplotlib.pyplot as plt
 comm = MPI.COMM_WORLD
 import os
 import sys
+from EVP_methods import modesolver
 path = os.path.dirname(os.path.abspath(__file__))
+if len(sys.argv) < 2:
+    # raise
+    try:
+        configfile = path + "/options.cfg"
+    except:
+        print('please provide config file')
+        raise
+else:
+    configfile = sys.argv[1]
+from configparser import ConfigParser
+config = ConfigParser()
+config.read(str(configfile))
 # Parameters
-Nz = 64
-Rayleigh = 1000
-Prandtl = 1
-kx = 3.141592653589793
-NEV = 10
-Lz = 1
-target = 0
-ad =0
-A = 1.1681539683301085
-sig = 0.02
+Nz = config.getfloat('param', 'Nz')
+Nx = config.getfloat('param','Nx')
+Rayleigh = config.getfloat('param', 'Ra') 
+Prandtl = config.getfloat('param', 'Pr')
+L_x = config.getfloat('param','Lx')
+Lz = config.getfloat('param','Lz')
+pi=np.pi
+kx = config.getfloat('param','kx')
+kx_global = eval(config.get('param','kx_global'))
+wavenum_list = []
+NEV = config.getint('param','NEV')
+A = config.getfloat('param','A')
+sig = sig_og = config.getfloat('param','sig')
+ad = config.getfloat('param', 'adiabat_mean')  
+solver = modesolver (Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,NEV=10, target=0)
+name=config.get('param','name')
+
 # Bases
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128)
 zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, Lz))
 z = dist.local_grid(zbasis)
-# Fields
-omega = dist.Field(name='omega')
-nabad = dist.Field(name="nabad",bases=(zbasis, ))
-p = dist.Field(name='p', bases=(zbasis,))
-b = dist.Field(name='b', bases=(zbasis,))
-ux = dist.Field(name='ux', bases=(zbasis,))
-uz = dist.Field(name='uz', bases=(zbasis,))
-b_z = dist.Field(name='b_z', bases=(zbasis,))
-ux_z = dist.Field(name='ux_z', bases=(zbasis,))
-uz_z = dist.Field(name='uz_z', bases=(zbasis,))
 arr_x = np.linspace(0,4,256)
 mode=np.exp(1j*kx*arr_x)
-tau_p = dist.Field(name='tau_p')
-tau_b1 = dist.Field(name='tau_b1')
-tau_b2 = dist.Field(name='tau_b2')
-tau_ux1 = dist.Field(name='tau_ux1')
-tau_ux2 = dist.Field(name='tau_ux2')
-tau_uz1 = dist.Field(name='tau_uz1')
-tau_uz2 = dist.Field(name='tau_uz2')
-
-# Substitutions
-kappa = (Rayleigh * Prandtl)**(-1/2)
-nu = (Rayleigh / Prandtl)**(-1/2)
-lift_basis = zbasis.derivative_basis(1)
-lift = lambda A: d3.Lift(A, lift_basis, -1)
-dt = lambda A: omega*A
-dx = lambda A: 1j*kx*A
-dz = lambda A: d3.Differentiate(A, zcoord)
-#Adiabat Parameterization
-adiabat_mean = ad
-pi = np.pi
-A_ad = A
-adiabat_arr = adiabat_mean-A_ad*(1/sig)/((2*pi)**0.5)*np.exp((-1/2)*(((z-0.5)**2)/sig**2))#Adiabat
-nabad['g']=adiabat_arr
-
-# Problem
-# First-order form: "div(f)" becomes "trace(grad_f)"
-# First-order form: "lap(f)" becomes "div(grad_f)"
-problem = d3.EVP([p, b, ux, uz, b_z, ux_z, uz_z, tau_p, tau_b1, tau_b2, tau_ux1, tau_uz1, tau_ux2, tau_uz2], namespace=locals(), eigenvalue=omega)
-problem.add_equation("dx(ux) + uz_z + tau_p = 0")
-problem.add_equation("dt(b) - kappa*( dx(dx(b)) + dz(b_z) ) + lift(tau_b2) - (-nabad+1)*uz= 0")
-problem.add_equation("dt(ux) - nu*( dx(dx(ux)) + dz(ux_z) ) + dx(p)     + lift(tau_ux2) = 0")
-problem.add_equation("dt(uz) - nu*( dx(dx(uz)) + dz(uz_z) ) + dz(p) - b + lift(tau_uz2) = 0")
-problem.add_equation("b_z - dz(b) + lift(tau_b1) = 0")
-problem.add_equation("ux_z - dz(ux) + lift(tau_ux1) = 0")
-problem.add_equation("uz_z - dz(uz) + lift(tau_uz1) = 0")
-problem.add_equation("b(z=0) = 0")
-problem.add_equation("ux(z=0) = 0")
-problem.add_equation("uz(z=0) = 0")
-problem.add_equation("b(z=Lz) = 0")
-problem.add_equation("ux(z=Lz) = 0")
-problem.add_equation("uz(z=Lz) = 0")
-problem.add_equation("integ(p) = 0") # Pressure gauge
-
-# Solver
-solver = problem.build_solver()
 sp = solver.subproblems[0]
-
-solver.solve_dense(sp)
 evals = solver.eigenvalues[np.isfinite(solver.eigenvalues)]
 evals = evals[np.argsort(-evals.real)]
 print(f"Slowest decaying mode: λ = {evals[0]}")
 solver.set_state(np.argmin(np.abs(solver.eigenvalues - evals[0])), sp.subsystems[0])
 
+#Fields
+b = solver.state[1]
+ux = solver.state[2]
+p = solver.state[0]
+uz = solver.state[3]
 b.change_scales(1)
 p.change_scales(1)
 ux.change_scales(1)
@@ -106,7 +75,10 @@ ux_mode=(np.outer(ux['g'],mode)*phaser).real
 uz_mode=(np.outer(uz['g'],mode)*phaser).real
 
 modeslist = [b_mode,ux_mode,uz_mode]
-np.save('modedata.npy', np.array(modeslist, dtype=object),allow_pickle=True)
+full_dir = path+"/"+name +'/'
+if not os.path.exists(full_dir):
+    os.makedirs(full_dir)
+np.save(full_dir+'modedata.npy', np.array(modeslist, dtype=object),allow_pickle=True)
 # sys.exit()
 fig, axs = plt.subplots(2, 2)
 ax = axs[0, 0]
@@ -137,8 +109,12 @@ ax.set_title(r'$\text{u}_z$')
 fig.colorbar(c, ax=ax)
 
 folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
-name='TestRun'
-plt.savefig(path+"/eigenvalprob_plots/"+folderstring+"/"+name+"rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+full_dir = path+"/eigenvalprob_plots/"+folderstring
+if not os.path.exists(full_dir):
+    os.makedirs(full_dir)
+plt.savefig(full_dir+"/"+name+"rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+full_dir = path+"/"+name 
+plt.savefig(full_dir+"/rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
 plt.close()
 
 #Eigenmodes plot
@@ -179,4 +155,6 @@ ax_z.plot(z, uz['g'].imag)
 plt.tight_layout()
 
 #Figure Saving
-plt.savefig(path+"/eigenvalprob_plots/"+folderstring+"/"+name+"rbcmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+full_dir = path+"/"+name 
+plt.savefig(full_dir+"/rbc1DmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+plt.close()

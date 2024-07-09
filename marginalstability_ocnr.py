@@ -13,6 +13,7 @@ import sys
 import os 
 path = os.path.dirname(os.path.abspath(__file__))
 from scipy.optimize import minimize_scalar
+from EVP_methods import geteigenval , modesolver
 import time
 # configfile = path +"/options.cfg"
 # args = docopt(__doc__)
@@ -29,73 +30,7 @@ else:
 config = ConfigParser()
 config.read(str(configfile))
 name = config.get('param', 'name')
-# kappa = (Rayleigh * Prandtl)**(-1/2)
-# nu = (Rayleigh / Prandtl)**(-1/2)
 #Eigenvalue Spectrum Function
-def geteigenval(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,NEV=10, target=0):
-    """Compute maximum linear growth rate."""
-
-    # Parameters
-    Nx = 2
-    Lx = 2 * np.pi / kx
-    Lz = 1
-    # Bases
-    coords = d3.CartesianCoordinates('x', 'z')
-    dist = d3.Distributor(coords, dtype=np.complex128, comm=MPI.COMM_SELF)
-    xbasis = d3.ComplexFourier(coords['x'], size=Nx, bounds=(0, Lx))
-
-    zbasis = d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, Lz))
-
-    # Fields
-    omega = dist.Field(name='omega')
-    p = dist.Field(name='p', bases=(xbasis,zbasis))
-    b = dist.Field(name='b', bases=(xbasis,zbasis))
-    # mode = dist.Field(name="mode",bases=(Xbasis,))
-    u = dist.VectorField(coords, name='u', bases=(xbasis,zbasis))
-    nabad = dist.Field(name="nabad",bases=(zbasis, ))
-    tau_p = dist.Field(name='tau_p')
-    tau_b1 = dist.Field(name='tau_b1', bases=xbasis)
-    tau_b2 = dist.Field(name='tau_b2', bases=xbasis)
-    tau_u1 = dist.VectorField(coords, name='tau_u1', bases=xbasis)
-    tau_u2 = dist.VectorField(coords, name='tau_u2', bases=xbasis)
-
-    # Substitutions
-    kappa = (Rayleigh * Prandtl)**(-1/2)
-    nu = (Rayleigh / Prandtl)**(-1/2)
-    x, z = dist.local_grids(xbasis, zbasis)
-    ex, ez = coords.unit_vector_fields(dist)
-    lift_basis = zbasis.derivative_basis(1)
-    lift = lambda A: d3.Lift(A, lift_basis, -1)
-    grad_u = d3.grad(u) + ez*lift(tau_u1) # First-order reduction
-    grad_b = d3.grad(b) + ez*lift(tau_b1) # First-order reduction
-    # mode['g']=np.exp(1j*kx*X) #Eigenmode
-
-    #A~ eigenfunc(A)*e^(ikx-omegat*t)
-    dt = lambda A: -1*omega*A #Ansatz for dt
-
-    #Adiabat Parameterization
-    pi = np.pi
-    adiabat_arr = adiabat_mean-A_ad*(1/sig)/((2*pi)**0.5)*np.exp((-1/2)*(((z-0.5)**2)/sig**2)) #Adiabat
-    nabad['g']=adiabat_arr
-    arr_Ad = nabad.gather_data()
-    # Problem                                                c
-    # First-order form: "div(f)" becomes "trace(grad_f)"
-    # First-order form: "lap(f)" becomes "div(grad_f)"
-    problem = d3.EVP([p, b, u, tau_p, tau_b1, tau_b2, tau_u1, tau_u2], namespace=locals(), eigenvalue=omega)
-    problem.add_equation("trace(grad_u) + tau_p = 0")
-    problem.add_equation("dt(b) - kappa*div(grad_b) + lift(tau_b2) - (-nabad+1)*(ez@u) = 0")
-    problem.add_equation("dt(u) - nu*div(grad_u) + grad(p) - b*ez + lift(tau_u2) = 0")
-    problem.add_equation("b(z=0) = 0")
-    problem.add_equation("u(z=0) = 0")
-    problem.add_equation("b(z=Lz) = 0")
-    problem.add_equation("u(z=Lz) = 0")
-    problem.add_equation("integ(p) = 0") # Pressure gauge
-
-    # Solver
-    solver = problem.build_solver(entry_cutoff=0)
-    solver.solve_sparse(solver.subproblems[1], NEV, target=target)
-    return solver.eigenvalues
-
 def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=10, target=0):
     comm = MPI.COMM_WORLD
     # Compute growth rate over local wavenumbers
@@ -149,7 +84,11 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
     counter = 0
     counter_tol = 10
     growthrateslist=getgrowthrates(Rayleigh, Prandtl, Nz, A, ad,sig, NEV=10, target = 0)
-    print('Rayleigh:', Rayleigh)
+    if rank == 0:
+        print('Z Resolution:',Nz)
+        print('Rayleigh:', Rayleigh)
+        print('Sigma:', sig)
+        print('Intial Ampllitude:', A)
     if rank == 0:
         print('Intial Growth Rates:',growthrateslist)
     max_omeg = max(growthrateslist)
@@ -159,169 +98,108 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
     #Finding marginal stability
     A_plus = A+epsilon
     A_minus= A-epsilon
-    plusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A+epsilon, ad,sig, NEV=10, target = 0)
+    plusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A_plus, ad,sig, NEV=10, target = 0)
     ampomeg_plus=max(plusamp_list) 
-    minusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A-epsilon, ad,sig, NEV=10, target = 0)
+    minusamp_list=getgrowthrates(Rayleigh, Prandtl, Nz, A_minus, ad,sig, NEV=10, target = 0)
     ampomeg_minus=max(minusamp_list)
     omeg_guess = np.inf
-    # def rooter(amp_arg):
-    #     print('Amplitude:',amp_arg)
-    #     omega = max(getgrowthrates(Rayleigh, Prandtl, Nz, amp_arg, ad, NEV=10))
-    #     print('Omega:',omega)
-    #     return omega
-    # result = minimize_scalar(rooter,bounds=(0,2), method='bounded',tol=0.0001)
-    # print(result.x)
-    # sys.exit()
-    Amp_list = np.linspace(0,2,20)
-    guessrates_solve = []
-    for i in Amp_list:
-        guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl, Nz, A, ad,sig)))
-    if rank == 0: 
-        plt.scatter(Amp_list,guessrates_solve)
-        plt.xlabel('Amplitudes')
-        plt.ylabel(r'Growth Guess ($\omega_{guess}$)')
-        plt.title('Ra={}'.format(Rayleigh),r' $\simga=$'+str(sig))
-        plt.savefig(path+'/amplitudesvsomeg_guess.png')
-    # while abs(0-omeg_guess) > tol:
-    #     print('rank={}'.format(rank))
-    #     ispluscloser = abs(ampomeg_plus) < abs(ampomeg_minus)
-    #     A_guess = (A_plus*(ampomeg_minus)-A_minus*(ampomeg_plus))/(ampomeg_minus-ampomeg_plus)
-    #     finalrates = getgrowthrates(Rayleigh, Prandtl, Nz, A_guess, ad,sig, NEV=10, target = 0)
-    #     omeg_guess = max(finalrates)
-    #     if ispluscloser: 
-    #         A_minus = A_guess 
-    #         A = A_guess
-    #         ampomeg_minus = omeg_guess
-    #     else:
-    #         A_plus = A_guess
-    #         ampomeg_plus = omeg_guess
-    #         A = A_guess
-    #     counter = counter + 1
-    #     if rank == 0:
-    #         print('Iteration #:', str(counter) + '\n\n')
-    #         print("ampomeg_plus={}".format(ampomeg_plus))
-    #         print("ampomeg_minus={}".format(ampomeg_minus))
-    #         print("omeg_guess={}".format(omeg_guess))
-    #         print("A={}".format(A_guess))
-    #         print("tol={}".format(tol))
-    # if abs(0-omeg_guess) < tol: 
-    #     if rank == 0:
-    #         print(finalrates)
-    #         print(wavenum_list)
-    #     for i in range(len(finalrates)):
-    #         omega_final = finalrates[i]
-    #         if omega_final == omeg_guess:
-    #             maxomeg_kx = wavenum_list[i]
-    #     if rank == 0:
-    #         print("###################################################################################")
-    #         print("###################################################################################")
-    #         print("Condtions for marginal stability:")
-    #         print('Rayleigh Number:', Rayleigh)
-    #         print('Prandtl Number:', Prandtl)
-    #         print('Adiabat:', ad)
-    #         print('Amplitude:', A)
-    #         print('Wavenumber (kx) for maximum growth rate:', maxomeg_kx)
-    #         print("###################################################################################")
-    #         print("###################################################################################")
-    #     results = [Rayleigh, sig,maxomeg_kx, A]
-    return 
 
-def modesolver(Rayleigh, Prandtl, Nz, adiabat_mean, sig, A_ad, kx):
+    #Plotting test amplitudes
+    doamptest = config.getboolean('param', 'plotornot')
+    if doamptest:
+        Amp_list = np.linspace(1,1.5,30)
+        guessrates_solve = []
+        for i in Amp_list:
+            guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl, Nz, i, ad,sig)))
+        if rank == 0: 
+            print(guessrates_solve)
+        if rank == 0: 
+            # print(guessrates_solve)
+            plt.scatter(Amp_list,guessrates_solve)
+            plt.xlabel('Amplitudes')
+            plt.ylabel(r'Growth Guess ($\omega_{guess}$)')
+            plt.title('Ra={}'.format(Rayleigh)+' Sig={}'.format(sig)+' Nz='+str(Nz))
+            plt.savefig(path+'/'+name+'/'+'Ra={}'.format(Rayleigh)+'Sig={}'.format(sig)+'Nz={}'.format(Nz)+'_amplitudesvsomeg_guess.png')
+    else:
+    # Rootsolving
+        while abs(0-omeg_guess) > tol:
+            print('rank={}'.format(rank))
+            ispluscloser = abs(ampomeg_plus) < abs(ampomeg_minus)
+            A_guess = (A_plus*(ampomeg_minus)-A_minus*(ampomeg_plus))/(ampomeg_minus-ampomeg_plus)
+            finalrates = getgrowthrates(Rayleigh, Prandtl, Nz, A_guess, ad,sig, NEV=10, target = 0)
+            omeg_guess = max(finalrates)
+            if ispluscloser: 
+                A_minus = A_guess 
+                A = A_guess
+                ampomeg_minus = omeg_guess
+            else:
+                A_plus = A_guess
+                ampomeg_plus = omeg_guess
+                A = A_guess
+            counter = counter + 1
+            if rank == 0:
+                print('Iteration #:', str(counter) + '\n\n')
+                print("ampomeg_plus={}".format(ampomeg_plus))
+                print("ampomeg_minus={}".format(ampomeg_minus))
+                print("omeg_guess={}".format(omeg_guess))
+                print("A={}".format(A_guess))
+                print("tol={}".format(tol))
+        if abs(0-omeg_guess) < tol: 
+            if rank == 0:
+                print(finalrates)
+                print(wavenum_list)
+            for i in range(len(finalrates)):
+                omega_final = finalrates[i]
+                if omega_final == omeg_guess:
+                    maxomeg_kx = wavenum_list[i]
+            if rank == 0:
+                print("###################################################################################")
+                print("###################################################################################")
+                print("Condtions for marginal stability:")
+                print('Rayleigh Number:', Rayleigh)
+                print('Prandtl Number:', Prandtl)
+                print('Adiabat:', ad)
+                print('Amplitude:', A)
+                print('Wavenumber (kx) for maximum growth rate:', maxomeg_kx)
+                print("###################################################################################")
+                print("###################################################################################")
+            results = [Rayleigh, sig,maxomeg_kx, A]
+    return results
+
+def modewrapper(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz,NEV=10, target=0):
+    
     print('Mode conditions:\n\n')
     print('Rayleigh:', Rayleigh)
     print('Sig:', sig)
-    Lz = 1
-    #Wavenumber 
-    # stability_results = findmarginalomega(Rayleigh,Prandtl,Nz,A_ad,adiabat_mean,sig)
-    # kx = stability_results[2]
-    # A_ad = stability_results[3]
-    # Bases
-    zcoord = d3.Coordinate('z')
-    dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
-    zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, 1))
-    z = dist.local_grid(zbasis)
-    arr_x = np.linspace(0,4,256)
-    # Fields
-    omega = dist.Field(name='omega')
-    nabad = dist.Field(name="nabad",bases=(zbasis, ))
-    p = dist.Field(name='p', bases=(zbasis,))
-    b = dist.Field(name='b', bases=(zbasis,))
-    ux = dist.Field(name='ux', bases=(zbasis,))
-    uz = dist.Field(name='uz', bases=(zbasis,))
-    b_z = dist.Field(name='b_z', bases=(zbasis,))
-    ux_z = dist.Field(name='ux_z', bases=(zbasis,))
-    uz_z = dist.Field(name='uz_z', bases=(zbasis,))
-    arr_x = np.linspace(0,4,256)
-    mode=np.exp(1j*kx*arr_x)
-    tau_p = dist.Field(name='tau_p')
-    tau_b1 = dist.Field(name='tau_b1')
-    tau_b2 = dist.Field(name='tau_b2')
-    tau_ux1 = dist.Field(name='tau_ux1')
-    tau_ux2 = dist.Field(name='tau_ux2')
-    tau_uz1 = dist.Field(name='tau_uz1')
-    tau_uz2 = dist.Field(name='tau_uz2')
-
-    # Substitutions
-    kappa = (Rayleigh * Prandtl)**(-1/2)
-    nu = (Rayleigh / Prandtl)**(-1/2)
-    lift_basis = zbasis.derivative_basis(1)
-    lift = lambda A: d3.Lift(A, lift_basis, -1)
-    dt = lambda A: omega*A
-    dx = lambda A: 1j*kx*A
-    dz = lambda A: d3.Differentiate(A, zcoord)
-    #Adiabat Parameterization
-    pi = np.pi
-    adiabat_arr = adiabat_mean-A_ad*(1/sig)/((2*pi)**0.5)*np.exp((-1/2)*(((z-0.5)**2)/sig**2))#Adiabat
-    nabad['g']=adiabat_arr
-
-    # Problem
-    # First-order form: "div(f)" becomes "trace(grad_f)"
-    # First-order form: "lap(f)" becomes "div(grad_f)"
-    problem = d3.EVP([p, b, ux, uz, b_z, ux_z, uz_z, tau_p, tau_b1, tau_b2, tau_ux1, tau_uz1, tau_ux2, tau_uz2], namespace=locals(), eigenvalue=omega)
-    problem.add_equation("dx(ux) + uz_z + tau_p = 0")
-    problem.add_equation("dt(b) - kappa*( dx(dx(b)) + dz(b_z) ) + lift(tau_b2) - (-nabad+1)*uz= 0")
-    problem.add_equation("dt(ux) - nu*( dx(dx(ux)) + dz(ux_z) ) + dx(p)     + lift(tau_ux2) = 0")
-    problem.add_equation("dt(uz) - nu*( dx(dx(uz)) + dz(uz_z) ) + dz(p) - b + lift(tau_uz2) = 0")
-    problem.add_equation("b_z - dz(b) + lift(tau_b1) = 0")
-    problem.add_equation("ux_z - dz(ux) + lift(tau_ux1) = 0")
-    problem.add_equation("uz_z - dz(uz) + lift(tau_uz1) = 0")
-    problem.add_equation("b(z=0) = 0")
-    problem.add_equation("ux(z=0) = 0")
-    problem.add_equation("uz(z=0) = 0")
-    problem.add_equation("b(z=Lz) = 0")
-    problem.add_equation("ux(z=Lz) = 0")
-    problem.add_equation("uz(z=Lz) = 0")
-    problem.add_equation("integ(p) = 0") # Pressure gauge
-
-    # Solver
-    solver = problem.build_solver()
+    #Solver evaluated
+    solver = modesolver(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz,NEV=10, target=0)
     sp = solver.subproblems[0]
-
-    solver.solve_dense(sp)
     evals = solver.eigenvalues[np.isfinite(solver.eigenvalues)]
     evals = evals[np.argsort(-evals.real)]
     print(f"Slowest decaying mode: λ = {evals[0]}")
     solver.set_state(np.argmin(np.abs(solver.eigenvalues - evals[0])), sp.subsystems[0])
-
+    #Buoyancy field
+    b = solver.state[1]
     b.change_scales(1)
-    #Heat Map
+    #Phases
     pi=np.pi
     phase=0
     phaser=np.exp(((1j*phase)*(2*pi))/4)
     #Modes
-    # b['g']=b['g']-(2 * (z - 1/2))
+    arr_x = np.linspace(0,4,256)
+    mode=np.exp(1j*kx*arr_x)
     b_mode=(np.outer(b['g'],mode)*phaser).real
     return b_mode
 
 # Parameters
-Nz = 256
-Nx = Nz * 2
+Nz = config.getint('param', 'Nz')
+Nx = config.getint('param','Nx')
 Rayleigh = config.getfloat('param', 'Ra') 
 Prandtl = config.getfloat('param', 'Pr')
-L_x = 4
-wavebound = 5
+Lz = config.getfloat('param','Lz')
+L_x = config.getfloat('param','Lx')
 pi=np.pi
-kx_global =(pi/2)*np.array([i+1 for i in range(wavebound)])
+kx_global =eval(config.get('param','kx_global'))
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)
@@ -332,15 +210,13 @@ NEV = 1
 A = config.getfloat('param','A')
 sig = sig_og = config.getfloat('param','sig')
 ad = config.getfloat('param', 'adiabat_mean')  
-epsilon = 0.1
 #Search parameters
-tol = 0.1
+epsilon = config.getfloat('param','epsilon')
+tol = config.getfloat('param','tol')
 #Plotting
 # Bases
 # dist = 00
 # if rank == 0:
-findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-sys.exit()
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
 zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, 1))
@@ -361,8 +237,8 @@ margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
 if rank == 0:
     A = margsoln[3]
     kx = margsoln[2]
-    soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-    c = ax1.pcolormesh(arr_x,z,soln-2*(z[..., np.newaxis]-1/2), cmap='BuRd') 
+    soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,NEV=10, target=0)
+    c = ax1.pcolormesh(arr_x,z,soln-2*(z[..., np.newaxis]-1/2), cmap='RdBu') 
     fig.colorbar(c, ax=ax1)
 
 # # #Top right corner
@@ -376,7 +252,7 @@ if rank == 0:
 # A = margsoln[3]
 # kx = margsoln[2]
 # if rank == 0:
-#     soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+#     soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
 # c = ax2.pcolormesh(arr_x,z,soln,cmap='RdBu')
 # fig.colorbar(c, ax=ax2)
 
@@ -393,7 +269,7 @@ if rank == 0:
 # A = margsoln[3]
 # kx = margsoln[2]
 # if rank == 0:
-#     soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+#     soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
 # c = ax3.pcolormesh(arr_x,z,soln,cmap='RdBu')
 # fig.colorbar(c, ax=ax3)
 
@@ -409,12 +285,12 @@ if rank == 0:
 # A = margsoln[3]
 # kx = margsoln[2]
 # if rank == 0:
-#     soln = modesolver(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+#     soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
 # c = ax4.pcolormesh(arr_x,z,soln,cmap='RdBu')
 # fig.colorbar(c, ax=ax4)
+
 if rank == 0:
     # folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
-    plt.savefig(path+"/eigenvalprob_plots/mode_plots/"+name+"multipanelheatmode.png")
     if rank == 0:
-        print(path+"/eigenvalprob_plots/mode_plots/"+name+"multipanelheatmode.png")
+        print(path+"/"+name+"multipanelheatmode.png")
     plt.close()
