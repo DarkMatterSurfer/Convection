@@ -11,6 +11,7 @@ rank = comm.Get_rank()
 import matplotlib.pyplot as plt
 import sys
 import os 
+import csv
 path = os.path.dirname(os.path.abspath(__file__))
 from scipy.optimize import minimize_scalar
 from EVP_methods import geteigenval , modesolver
@@ -82,7 +83,6 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=10, target=0):
 
 def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
     counter = 0
-    counter_tol = 10
     growthrateslist=getgrowthrates(Rayleigh, Prandtl, Nz, A, ad,sig, NEV=10, target = 0)
     if rank == 0:
         print('Z Resolution:',Nz)
@@ -92,7 +92,6 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
     if rank == 0:
         print('Intial Growth Rates:',growthrateslist)
     max_omeg = max(growthrateslist)
-    results = []
     if rank == 0:
         print('intial parameters maximum growth rate',max_omeg)
     #Finding marginal stability
@@ -107,7 +106,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
     #Plotting test amplitudes
     doamptest = config.getboolean('param', 'plotornot')
     if doamptest:
-        Amp_list = np.linspace(1,1.5,30)
+        Amp_list = np.linspace(2,4,20)
         guessrates_solve = []
         for i in Amp_list:
             guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl, Nz, i, ad,sig)))
@@ -119,7 +118,10 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
             plt.xlabel('Amplitudes')
             plt.ylabel(r'Growth Guess ($\omega_{guess}$)')
             plt.title('Ra={}'.format(Rayleigh)+' Sig={}'.format(sig)+' Nz='+str(Nz))
-            plt.savefig(path+'/'+name+'/'+'Ra={}'.format(Rayleigh)+'Sig={}'.format(sig)+'Nz={}'.format(Nz)+'_amplitudesvsomeg_guess.png')
+            full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'Ra{}'.format(Rayleigh)+'Pr{}'.format(Prandtl)+'/sig{}/'.format(sig)+'/'
+            if not os.path.exists(full_dir):
+                os.makedirs(full_dir)
+            plt.savefig(full_dir+'Ra={}'.format(Rayleigh)+'Sig={}'.format(sig)+'Nz={}'.format(Nz)+'_amplitudesvsomeg_guess.png')
     else:
     # Rootsolving
         while abs(0-omeg_guess) > tol:
@@ -138,20 +140,41 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
                 A = A_guess
             counter = counter + 1
             if rank == 0:
-                print('Iteration #:', str(counter) + '\n\n')
                 print("ampomeg_plus={}".format(ampomeg_plus))
                 print("ampomeg_minus={}".format(ampomeg_minus))
                 print("omeg_guess={}".format(omeg_guess))
                 print("A={}".format(A_guess))
                 print("tol={}".format(tol))
+                print('\n\n'+'Iteration #:', str(counter)+'\n\n' )
         if abs(0-omeg_guess) < tol: 
+            #Printing final rates
             if rank == 0:
-                print(finalrates)
-                print(wavenum_list)
+                print(finalrates) #Growth rates list containing marginally stable mode
+                print(wavenum_list) #List of wavenumbers
+            #Finding the dominate mode wavenumber (kx)
             for i in range(len(finalrates)):
                 omega_final = finalrates[i]
                 if omega_final == omeg_guess:
                     maxomeg_kx = wavenum_list[i]
+            #Writing conditions for marginal stability -> IN .CSV FILE
+            if rank == 0:
+                full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'Ra{}'.format(Rayleigh)+'Pr{}'.format(Prandtl)+'/sig{}/'.format(sig)+'/'
+                if not os.path.exists(full_dir):
+                    os.makedirs(full_dir)
+                csvname = full_dir+'Nz{}'.format(Nz)+'.csv'
+                with open(csvname, 'w', newline='') as csvfile:
+                    stabilitylog = csv.writer(csvfile, delimiter=',',
+                                            quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+                    stabilitylog.writerow("Condtions for marginal stability:"+'\n'+'|------------------|'+'\n')
+                    stabilitylog.writerow('Z Resolution: '+str(Nz))
+                    stabilitylog.writerow('Tolerance: '+str(tol))
+                    stabilitylog.writerow('Rayleigh Number: '+str(Rayleigh))
+                    stabilitylog.writerow('Prandtl Number: '+str(Prandtl))
+                    stabilitylog.writerow('(mean) Adiabat: '+str(ad))
+                    stabilitylog.writerow('Amplitude: '+str(A))
+                    stabilitylog.writerow('Wavenumber (kx) for maximum growth rate: '+str(maxomeg_kx))
+                    stabilitylog.writerow('Maximum growth rate: '+str(omeg_guess))
+            #Writing conditions for marginal stability -> IN TERMINAL
             if rank == 0:
                 print("###################################################################################")
                 print("###################################################################################")
@@ -164,7 +187,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
                 print("###################################################################################")
                 print("###################################################################################")
             results = [Rayleigh, sig,maxomeg_kx, A]
-    return results
+    return 
 
 def modewrapper(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz,NEV=10, target=0):
     
@@ -213,10 +236,10 @@ ad = config.getfloat('param', 'adiabat_mean')
 #Search parameters
 epsilon = config.getfloat('param','epsilon')
 tol = config.getfloat('param','tol')
+
 #Plotting
+
 # Bases
-# dist = 00
-# if rank == 0:
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
 zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, 1))
@@ -225,71 +248,77 @@ arr_x = np.linspace(0,4,Nx)
 aspectratio = 0
 fig, ([ax1, ax2,],[ax3,ax4]) = plt.subplots(2, 2)
 fig.tight_layout()
+
 #Top left corner
-# subplot_kw=dict(box_aspect=)
-# ax = axs[0, 0]
-# ax.set_adjustable("datalim")
 ax1.set_aspect('equal')
 ax1.set_adjustable('box', share=True)
 ax1.set_ylabel('Ra='+str(Rayleigh))
-margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+# margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
 #Mode paramaters
 if rank == 0:
-    A = margsoln[3]
-    kx = margsoln[2]
+    A = 1.27763189473734 #margsoln[3]
+    kx = 3.141592653589793#margsoln[2]
     soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,NEV=10, target=0)
     c = ax1.pcolormesh(arr_x,z,soln-2*(z[..., np.newaxis]-1/2), cmap='RdBu') 
     fig.colorbar(c, ax=ax1)
 
-# # #Top right corner
-# # ax = axs[0, 1]
-# Rayleigh=1e3
-# sig=0.02
-# ax2.set_aspect('equal')
-# ax2.set_adjustable('box', share=True)
+# #Top right corner
+# ax = axs[0, 1]
+Rayleigh=1e3
+sig=0.003
+ax2.set_aspect('equal')
+ax2.set_adjustable('box', share=True)
 # margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-# #Mode paramaters
-# A = margsoln[3]
-# kx = margsoln[2]
-# if rank == 0:
-#     soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-# c = ax2.pcolormesh(arr_x,z,soln,cmap='RdBu')
-# fig.colorbar(c, ax=ax2)
+#Mode paramaters
+A = 1.186577903268805#margsoln[3]
+kx =3.141592653589793 #margsoln[2]
+if rank == 0:
+    soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+c = ax2.pcolormesh(arr_x,z,soln,cmap='RdBu')
+fig.colorbar(c, ax=ax2)
 
-# #Bottom left corner
-# # ax = axs[1, 0]
-# Rayleigh=10
+#Bottom left corner
+# ax = axs[1, 0]
+Rayleigh=10
 # sig=sig_og
-# ax3.set_xlabel(r'$\sigma$='+str(sig))
-# ax3.set_aspect('equal')
-# ax3.set_adjustable('box', share=True)
-# ax3.set_ylabel('Ra='+str(Rayleigh))
+ax3.set_xlabel(r'$\sigma$='+str(sig))
+ax3.set_aspect('equal')
+ax3.set_adjustable('box', share=True)
+ax3.set_ylabel('Ra='+str(Rayleigh))
 # margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-# #Mode paramaters
-# A = margsoln[3]
-# kx = margsoln[2]
-# if rank == 0:
-#     soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-# c = ax3.pcolormesh(arr_x,z,soln,cmap='RdBu')
-# fig.colorbar(c, ax=ax3)
+#Mode paramaters
+A = 74.39846624838417#margsoln[3]
+kx = 3.141592653589793#margsoln[2]
+if rank == 0:
+    soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+c = ax3.pcolormesh(arr_x,z,soln,cmap='RdBu')
+fig.colorbar(c, ax=ax3)
 
-# #Bottom right corner
-# # ax = axs[1, 1]
-# Rayleigh=10
-# sig=0.02
-# ax4.set_aspect('equal')
-# ax4.set_adjustable('box', share=True)
-# ax4.set_xlabel(r'$\sigma$='+str(sig))
+#Bottom right corner
+# ax = axs[1, 1]
+Rayleigh=10
+sig=0.003
+ax4.set_aspect('equal')
+ax4.set_adjustable('box', share=True)
+ax4.set_xlabel(r'$\sigma$='+str(sig))
 # margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-# #Mode paramaters
-# A = margsoln[3]
-# kx = margsoln[2]
-# if rank == 0:
-#     soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-# c = ax4.pcolormesh(arr_x,z,soln,cmap='RdBu')
-# fig.colorbar(c, ax=ax4)
+#Mode paramaters
+A = 75.69009237957283#margsoln[3]
+kx = 3.141592653589793#margsoln[2]
+if rank == 0:
+    soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
+c = ax4.pcolormesh(arr_x,z,soln,cmap='RdBu')
+fig.colorbar(c, ax=ax4)
 
 if rank == 0:
+    ra1 = 1e3
+    ra2 = 10
+    sig1 = 0.008
+    sig2 = 0.003
+    full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'Ra1{}'.format(ra1)+'Ra2{}'.format(ra2)+'_modeplots/'
+    if not os.path.exists(full_dir):
+        os.makedirs(full_dir)
+    plt.savefig(full_dir+'Sig1={}'.format(sig1)+'Sig2={}'.format(sig2)+'_multimode.png')
     # folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
     if rank == 0:
         print(path+"/"+name+"multipanelheatmode.png")

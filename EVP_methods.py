@@ -72,7 +72,8 @@ def geteigenval(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz=1,NEV=10, 
     problem.add_equation("b(z=Lz) = 0")
     problem.add_equation("u(z=Lz) = 0")
     problem.add_equation("integ(p) = 0") # Pressure gauge
-
+    # if rank == 0:
+    #     print(Nz)
     # Solver
     solver = problem.build_solver(entry_cutoff=0)
     solver.solve_sparse(solver.subproblems[1], NEV, target=target)
