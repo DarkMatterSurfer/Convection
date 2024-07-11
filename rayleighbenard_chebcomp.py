@@ -65,18 +65,11 @@ zbasis_c =  d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, z_match), dealias=3/2
 p_r  = dist.Field(name='p_r', bases=(xbasis,zbasis_r))
 T_r  = dist.Field(name='T_r', bases=(xbasis,zbasis_r))
 u_r  = dist.VectorField(coords, name='u_r', bases=(xbasis,zbasis_r))
-# c    = dist.Field(name='c', bases=(xbasis, zbasis_r))
-# c2   = dist.Field(name='c2', bases=(xbasis, zbasis_r))
-# p2   = dist.Field(name='p2', bases=(xbasis,zbasis_r))
-# T2   = dist.Field(name='T2', bases=(xbasis,zbasis_r))
-# u2   = dist.VectorField(coords, name='u2', bases=(xbasis,zbasis_r))
-# c4   = dist.Field(name='c4', bases=(xbasis, zbasis_r))
-# p4   = dist.Field(name='p4', bases=(xbasis,zbasis_r))
-# T4   = dist.Field(name='T4', bases=(xbasis,zbasis_r))
-# u4   = dist.VectorField(coords, name='u4', bases=(xbasis,zbasis_r))
+nabad_r = dist.Field(name='nabad_r', bases=(zbasis_r, ))
 p_c  = dist.Field(name='p_c', bases=(xbasis,zbasis_c))
 T_c  = dist.Field(name='T_c', bases=(xbasis,zbasis_c))
 u_c  = dist.VectorField(coords, name='u_c', bases=(xbasis,zbasis_c))
+nabad_c = dist.Field(name='nabad_c', bases=(zbasis_c, ))
 tau_p  = dist.Field(name='tau_p')
 tau_p2 = dist.Field(name='tau_p2')
 tau_p4 = dist.Field(name='tau_p4')
@@ -109,7 +102,11 @@ grad_u_r = d3.grad(u_r) + ez*lift_r(tau_u1_r) # First-order reduction
 grad_T_r = d3.grad(T_r) + ez*lift_r(tau_T1_r) # First-order reduction
 grad_u_c = d3.grad(u_c) + ez*lift_c(tau_u1_c) # First-order reduction
 grad_T_c = d3.grad(T_c) + ez*lift_c(tau_T1_c) # First-order reduction
-
+#Adiabatic Parameterization
+ad_r = A-(A-1)*np.exp(-(z_r-(Lz/2))**2*(1/(2*sig**2)))
+ad_c = A-(A-1)*np.exp(-(z_c-(Lz/2))**2*(1/(2*sig**2)))
+nabad_r['g']=ad_r
+nabad_c['g']=ad_c
 variables = [p_r, T_r, u_r, p_c, T_c, u_c]#, c, p2, T2, u2, c2, p4, T4, u4, c4
 taus = [tau_p, tau_T1_r, tau_T2_r, tau_u1_r, tau_u2_r,
         tau_T1_c, tau_T2_c, tau_u1_c, tau_u2_c] #tau_T21, tau_T22, tau_u21, tau_u22, tau_p2,tau_T41, tau_T42, tau_u41, tau_u42, tau_p4
@@ -119,11 +116,11 @@ problem = d3.IVP(variables + taus, namespace=locals())
 
 #Top Half
 problem.add_equation("trace(grad_u_r) + tau_p = 0")
-problem.add_equation("dt(T_r) - kappa*div(grad_T_r) + lift_r(tau_T2_r) = - u_r@grad(T_r)")
+problem.add_equation("dt(T_r) - kappa*div(grad_T_r) + lift_r(tau_T2_r) +nabad_r*(ez@u_r)= - u_r@grad(T_r)")
 problem.add_equation("dt(u_r) - nu*div(grad_u_r) + grad(p_r) + lift_r(tau_u2_r) + ez*(T_r)= - u_r@grad(u_r) ")
 #Bottom Half
 problem.add_equation("trace(grad_u_c) = 0")
-problem.add_equation("dt(T_c) - kappa*div(grad_T_c) + lift_c(tau_T2_c) = - u_c@grad(T_c)")
+problem.add_equation("dt(T_c) - kappa*div(grad_T_c) + lift_c(tau_T2_c)+nabad_c*(ez@u_c) = - u_c@grad(T_c)")
 problem.add_equation("dt(u_c) - nu*div(grad_u_c) + grad(p_c) + lift_c(tau_u2_c) + ez*(T_c) = - u_c@grad(u_c)")
 #Matching Conditions
 problem.add_equation("p_r(z=z_match) - p_c(z=z_match) = 0")
@@ -171,11 +168,15 @@ checkpoints.add_tasks(solver.state, layout='g')
 
 # Analysis
 snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
-snapshots.add_task(T, name='buoyancy')
-snapshots.add_task(-d3.div(d3.skew(u)), name='vorticity')
+snapshots.add_task(T_r, name='buoyancy_r')
+snapshots.add_task(T_c, name='buoyancy_c')
+vort_r=-d3.div(d3.skew(u_r))
+vort_c=-d3.div(d3.skew(u_c))
+snapshots.add_task(vort_r, name='vorticity_r')
+snapshots.add_task(vort_c, name='vorticity_c')
 CFL = d3.CFL(solver, initial_dt=dt, cadence=3, safety=0.35, max_dt=maxtimestep, threshold=0.05)
+CFL.add_velocity(u_r)
 CFL.add_velocity(u_c)
-
 # Main loop
 try:
     logger.info('Starting loop')
