@@ -43,11 +43,11 @@ kappa = (Rayleigh * Prandtl)**(-1/2) #Thermal dif
 paramAD_Diff= config.getboolean('param','isDiff')
 dealias = 3/2
 stop_sim_time = config.getfloat('param', 'st')
-timestepper = d3.RK222
 max_timestep = config.getfloat('param', 'maxtimestep')
 dtype = np.float64
 name = config.get('param', 'name')
 koopa1D= config.getboolean('param','koopa1D')
+timestepper = d3.RK222
 # Bases
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
