@@ -83,7 +83,7 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz,NEV=10, ta
 
     # Bases
     zcoord = d3.Coordinate('z')
-    dist = d3.Distributor(zcoord, dtype=np.complex128)
+    dist = d3.Distributor(zcoord, dtype=np.complex128,comm=MPI.COMM_SELF)
     zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, Lz))
     z = dist.local_grid(zbasis)
     # Fields
@@ -96,8 +96,6 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz,NEV=10, ta
     b_z = dist.Field(name='b_z', bases=(zbasis,))
     ux_z = dist.Field(name='ux_z', bases=(zbasis,))
     uz_z = dist.Field(name='uz_z', bases=(zbasis,))
-    arr_x = np.linspace(0,4,256)
-    mode=np.exp(1j*kx*arr_x)
     tau_p = dist.Field(name='tau_p')
     tau_b1 = dist.Field(name='tau_b1')
     tau_b2 = dist.Field(name='tau_b2')

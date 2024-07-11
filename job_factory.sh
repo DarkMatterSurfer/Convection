@@ -1,7 +1,7 @@
 #!/bin/bash
 config=options.cfg
-solver=rayleigh_benard_config.py
 template=jobs.sh
+EVPsolver=EVP_methods.py
 source $config
 if [ -d "$name" ]; then 
     echo "DIRECTORY $name ALREADY EXISTS!"
@@ -10,6 +10,7 @@ if [ -d "$name" ]; then
     rm -rf $name
 fi
 mkdir $name
+cp $EVPsolver $name
 cp $config $name
 cp $solver $name
 cp $template $name/$name.sh

@@ -45,7 +45,7 @@ zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128)
 zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, Lz))
 z = dist.local_grid(zbasis)
-arr_x = np.linspace(0,4,256)
+arr_x = np.linspace(0,L_x,Nx)
 mode=np.exp(1j*kx*arr_x)
 sp = solver.subproblems[0]
 evals = solver.eigenvalues[np.isfinite(solver.eigenvalues)]

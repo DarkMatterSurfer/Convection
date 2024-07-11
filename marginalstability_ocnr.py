@@ -8,6 +8,7 @@ import mpi4py
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
+# size = comm.Get_size()
 import matplotlib.pyplot as plt
 import sys
 import os 
@@ -30,6 +31,28 @@ else:
 #Config file
 config = ConfigParser()
 config.read(str(configfile))
+# Parameters
+Nz = config.getint('param', 'Nz')
+Nx = config.getint('param','Nx')
+Rayleigh = config.getfloat('param', 'Ra') 
+Prandtl = config.getfloat('param', 'Pr')
+Lz = config.getfloat('param','Lz')
+L_x = config.getfloat('param','Lx')
+pi=np.pi
+kx_global =eval(config.get('param','kx_global'))
+wavenum_list = []
+for i in kx_global:
+    wavenum_list.append(i)
+maxomeg_kx = 0
+if rank == 0:
+    print('Wavenumbers :',wavenum_list)
+NEV = 1
+A = config.getfloat('param','A')
+sig = sig_og = config.getfloat('param','sig')
+ad = config.getfloat('param', 'adiabat_mean')  
+#Search parameters
+epsilon = config.getfloat('param','epsilon')
+tol = config.getfloat('param','tol')
 name = config.get('param', 'name')
 #Eigenvalue Spectrum Function
 def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=10, target=0):
@@ -106,7 +129,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
     #Plotting test amplitudes
     doamptest = config.getboolean('param', 'plotornot')
     if doamptest:
-        Amp_list = np.linspace(2,4,20)
+        Amp_list = np.linspace(105,130,30)
         guessrates_solve = []
         for i in Amp_list:
             guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl, Nz, i, ad,sig)))
@@ -187,9 +210,10 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig):
                 print("###################################################################################")
                 print("###################################################################################")
             results = [Rayleigh, sig,maxomeg_kx, A]
-    return 
+            comm.barrier()
+    return results
 
-def modewrapper(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz,NEV=10, target=0):
+def modewrapper(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz,Nx,NEV=10, target=0):
     
     print('Mode conditions:\n\n')
     print('Rayleigh:', Rayleigh)
@@ -209,42 +233,20 @@ def modewrapper(Rayleigh, Prandtl, kx, Nz, A_ad, adiabat_mean, sig,Lz,NEV=10, ta
     phase=0
     phaser=np.exp(((1j*phase)*(2*pi))/4)
     #Modes
-    arr_x = np.linspace(0,4,256)
+    arr_x = np.linspace(0,L_x,Nx)
     mode=np.exp(1j*kx*arr_x)
     b_mode=(np.outer(b['g'],mode)*phaser).real
     return b_mode
 
-# Parameters
-Nz = config.getint('param', 'Nz')
-Nx = config.getint('param','Nx')
-Rayleigh = config.getfloat('param', 'Ra') 
-Prandtl = config.getfloat('param', 'Pr')
-Lz = config.getfloat('param','Lz')
-L_x = config.getfloat('param','Lx')
-pi=np.pi
-kx_global =eval(config.get('param','kx_global'))
-wavenum_list = []
-for i in kx_global:
-    wavenum_list.append(i)
-maxomeg_kx = 0
-if rank == 0:
-    print('Wavenumbers :',wavenum_list)
-NEV = 1
-A = config.getfloat('param','A')
-sig = sig_og = config.getfloat('param','sig')
-ad = config.getfloat('param', 'adiabat_mean')  
-#Search parameters
-epsilon = config.getfloat('param','epsilon')
-tol = config.getfloat('param','tol')
 
 #Plotting
 
 # Bases
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
-zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, 1))
+zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, Lz))
 z = dist.local_grid(zbasis)
-arr_x = np.linspace(0,4,Nx)
+arr_x = np.linspace(0,L_x,Nx)
 aspectratio = 0
 fig, ([ax1, ax2,],[ax3,ax4]) = plt.subplots(2, 2)
 fig.tight_layout()
@@ -253,73 +255,74 @@ fig.tight_layout()
 ax1.set_aspect('equal')
 ax1.set_adjustable('box', share=True)
 ax1.set_ylabel('Ra='+str(Rayleigh))
-# margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
 #Mode paramaters
 if rank == 0:
-    A = 1.27763189473734 #margsoln[3]
-    kx = 3.141592653589793#margsoln[2]
-    soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,NEV=10, target=0)
-    c = ax1.pcolormesh(arr_x,z,soln-2*(z[..., np.newaxis]-1/2), cmap='RdBu') 
+    A = margsoln[3]
+    kx = margsoln[2]
+    soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,Nx,NEV=10, target=0)
+    #-2*(z[..., np.newaxis]-1/2)
+    c = ax1.pcolormesh(arr_x,z,soln, cmap='RdBu') 
     fig.colorbar(c, ax=ax1)
 
-# #Top right corner
-# ax = axs[0, 1]
-Rayleigh=1e3
-sig=0.003
-ax2.set_aspect('equal')
-ax2.set_adjustable('box', share=True)
-# margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-#Mode paramaters
-A = 1.186577903268805#margsoln[3]
-kx =3.141592653589793 #margsoln[2]
-if rank == 0:
-    soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-c = ax2.pcolormesh(arr_x,z,soln,cmap='RdBu')
-fig.colorbar(c, ax=ax2)
+# # #Top right corner
+# # ax = axs[0, 1]
+# # Rayleigh=1e3
+# sig=0.003
+# ax2.set_aspect('equal')
+# ax2.set_adjustable('box', share=True)
+# # margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+# #Mode paramaters
+# A = 1.186577903268805#margsoln[3]
+# kx =3.141592653589793 #margsoln[2]
+# if rank == 0:
+#     soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,Nx,NEV=10, target=0) 
+# c = ax2.pcolormesh(arr_x,z,soln,cmap='RdBu')
+# fig.colorbar(c, ax=ax2)
 
-#Bottom left corner
-# ax = axs[1, 0]
-Rayleigh=10
+# #Bottom left corner
+# # ax = axs[1, 0]
+# Rayleigh=10
 # sig=sig_og
-ax3.set_xlabel(r'$\sigma$='+str(sig))
-ax3.set_aspect('equal')
-ax3.set_adjustable('box', share=True)
-ax3.set_ylabel('Ra='+str(Rayleigh))
-# margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-#Mode paramaters
-A = 74.39846624838417#margsoln[3]
-kx = 3.141592653589793#margsoln[2]
-if rank == 0:
-    soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-c = ax3.pcolormesh(arr_x,z,soln,cmap='RdBu')
-fig.colorbar(c, ax=ax3)
+# ax3.set_xlabel(r'$\sigma$='+str(sig))
+# ax3.set_aspect('equal')
+# ax3.set_adjustable('box', share=True)
+# ax3.set_ylabel('Ra='+str(Rayleigh))
+# # margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+# #Mode paramaters
+# A = 74.39846624838417#margsoln[3]
+# kx = 3.141592653589793#margsoln[2]
+# if rank == 0:
+#     soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,Nx,NEV=10, target=0) 
+# c = ax3.pcolormesh(arr_x,z,soln,cmap='RdBu')
+# fig.colorbar(c, ax=ax3)
 
-#Bottom right corner
-# ax = axs[1, 1]
-Rayleigh=10
-sig=0.003
-ax4.set_aspect('equal')
-ax4.set_adjustable('box', share=True)
-ax4.set_xlabel(r'$\sigma$='+str(sig))
-# margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
-#Mode paramaters
-A = 75.69009237957283#margsoln[3]
-kx = 3.141592653589793#margsoln[2]
-if rank == 0:
-    soln = modewrapper(Rayleigh, Prandtl, Nz, ad, sig, A, kx)
-c = ax4.pcolormesh(arr_x,z,soln,cmap='RdBu')
-fig.colorbar(c, ax=ax4)
+# #Bottom right corner
+# # ax = axs[1, 1]
+# Rayleigh=10
+# sig=0.003
+# ax4.set_aspect('equal')
+# ax4.set_adjustable('box', share=True)
+# ax4.set_xlabel(r'$\sigma$='+str(sig))
+# # margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+# #Mode paramaters
+# A = 75.69009237957283#margsoln[3]
+# kx = 3.141592653589793#margsoln[2]
+# if rank == 0:
+#     soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,Nx,NEV=10, target=0) 
+# c = ax4.pcolormesh(arr_x,z,soln,cmap='RdBu')
+# fig.colorbar(c, ax=ax4)
 
 if rank == 0:
     ra1 = 1e3
     ra2 = 10
-    sig1 = 0.008
-    sig2 = 0.003
+    sig1 = 0.01
+    sig2 = 0.008
     full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'Ra1{}'.format(ra1)+'Ra2{}'.format(ra2)+'_modeplots/'
     if not os.path.exists(full_dir):
         os.makedirs(full_dir)
-    plt.savefig(full_dir+'Sig1={}'.format(sig1)+'Sig2={}'.format(sig2)+'_multimode.png')
-    # folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
+    figpath=full_dir+'Sig1={}'.format(sig1)+'Sig2={}'.format(sig2)+'_multimode.png'
+    plt.savefig(figpath)
     if rank == 0:
-        print(path+"/"+name+"multipanelheatmode.png")
+        print(figpath)
     plt.close()
