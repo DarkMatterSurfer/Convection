@@ -58,8 +58,8 @@ dtype = np.float64
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
 xbasis      = d3.RealFourier(coords['x'], size=Nx, bounds=(-Lx/2, Lx/2), dealias=3/2)
-zbasis_r  =  d3.ChebyshevT(coords['z'], size=int(Nz/2), bounds=(z_match, Lz), dealias=3/2)
-zbasis_c =  d3.ChebyshevT(coords['z'], size=Nz, bounds=(0, z_match), dealias=3/2)
+zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(z_match, Lz), dealias=3/2)
+zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, z_match), dealias=3/2)
 
 # Fields
 p_r  = dist.Field(name='p_r', bases=(xbasis,zbasis_r))
