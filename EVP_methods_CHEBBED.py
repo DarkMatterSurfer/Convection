@@ -48,6 +48,9 @@ def geteigenval(Rayleigh, Prandtl, kx, Nx,Nz, A, sig,Lx,Lz,NEV=10, target=0):
     x, z_c = dist.local_grids(xbasis, zbasis_c)
     ex, ez = coords.unit_vector_fields(dist)
     dz = lambda A: d3.Differentiate(A, coords['z'])
+    dx = lambda A: 1j*kx*A
+    omega = dist.Field(name='omega')
+    dt = lambda A: omega*A
     #Substitutions 
     kappa = (Rayleigh * Prandtl)**(-1/2)
     nu = (Rayleigh / Prandtl)**(-1/2)
@@ -69,8 +72,7 @@ def geteigenval(Rayleigh, Prandtl, kx, Nx,Nz, A, sig,Lx,Lz,NEV=10, target=0):
             tau_T1_c, tau_T2_c, tau_u1_c, tau_u2_c] #tau_T21, tau_T22, tau_u21, tau_u22, tau_p2,tau_T41, tau_T42, tau_u41, tau_u42, tau_p4
 
     # 2D Boussinesq hydrodynamics
-    problem = d3.IVP(variables + taus, namespace=locals())
-
+    problem = d3.EVP(variables+taus, namespace=locals(), eigenvalue=omega)
     #Top Half
     problem.add_equation("trace(grad_u_r) + tau_p = 0")
     problem.add_equation("dt(T_r) - kappa*div(grad_T_r) + lift_r(tau_T2_r) +(nabad_r-2)*(ez@u_r)= 0")
@@ -149,6 +151,8 @@ def modesolver (Rayleigh, Prandtl, kx, Nx,Nz, A, sig,Lx,Lz,NEV=10, target=0):
     lift_basis_c = zbasis_c.derivative_basis(1)
     lift_r  = lambda A: d3.Lift(A, lift_basis_r, -1)
     lift_c = lambda A: d3.Lift(A, lift_basis_c, -1)
+    dt = lambda A: omega*A
+    dx = lambda A: 1j*kx*A
     #Adiabatic Parameterization
     ad_r = A-(A-1)*np.exp(-(z_r-(Lz/2))**2*(1/(2*sig**2)))
     ad_c = A-(A-1)*np.exp(-(z_c-(Lz/2))**2*(1/(2*sig**2)))
@@ -163,20 +167,20 @@ def modesolver (Rayleigh, Prandtl, kx, Nx,Nz, A, sig,Lx,Lz,NEV=10, target=0):
     problem = d3.EVP(vars_r+vars_c, namespace=locals(), eigenvalue=omega)
     #Top Half
     problem.add_equation("dx(ux_r) + uz_z_r + tau_p = 0")
-    problem.add_equation("dt(T_r) - kappa*( dx(dx(T_r)) + dz(T_z_r) ) + lift(tau_T2_r) - (-nabad_r+2)*uz_r= 0")
-    problem.add_equation("dt(ux_r) - nu*( dx(dx(ux_r)) + dz(ux_z_r) ) + dx(p_r)     + lift(tau_ux2_r)= 0")
-    problem.add_equation("dt(uz_r) - nu*( dx(dx(uz_r)) + dz(uz_z_r) ) + dz(p_r) - T_r + lift(tau_uz2_r) = 0")
-    problem.add_equation("T_z_r - dz(T_r) + lift(tau_T1_r) = 0")
-    problem.add_equation("ux_z_r - dz(ux_r) + lift(tau_ux1_r) = 0")
-    problem.add_equation("uz_z_r - dz(uz_r) + lift(tau_uz1_r) = 0")
+    problem.add_equation("dt(T_r) - kappa*( dx(dx(T_r)) + dz(T_z_r) ) + lift_r(tau_T2_r) - (-nabad_r+2)*uz_r= 0")
+    problem.add_equation("dt(ux_r) - nu*( dx(dx(ux_r)) + dz(ux_z_r) ) + dx(p_r)     + lift_r(tau_ux2_r)= 0")
+    problem.add_equation("dt(uz_r) - nu*( dx(dx(uz_r)) + dz(uz_z_r) ) + dz(p_r) - T_r + lift_r(tau_uz2_r) = 0")
+    problem.add_equation("T_z_r - dz(T_r) + lift_r(tau_T1_r) = 0")
+    problem.add_equation("ux_z_r - dz(ux_r) + lift_r(tau_ux1_r) = 0")
+    problem.add_equation("uz_z_r - dz(uz_r) + lift_r(tau_uz1_r) = 0")
     #Bottom Half
     problem.add_equation("dx(ux_c) + uz_z_c = 0")
-    problem.add_equation("dt(T_c) - kappa*( dx(dx(T_c)) + dz(T_z_c) ) + lift(tau_T2_c) - (-nabad_c+2)*uz_c= 0")
-    problem.add_equation("dt(ux_c) - nu*( dx(dx(ux_c)) + dz(ux_z_c) ) + dx(p_c)     + lift(tau_ux2_c)= 0")
-    problem.add_equation("dt(uz_c) - nu*( dx(dx(uz_c)) + dz(uz_z_c) ) + dz(p_c) - T_c + lift(tau_uz2_c) = 0")
-    problem.add_equation("T_z_c - dz(T_c) + lift(tau_T1_c) = 0")
-    problem.add_equation("ux_z_c - dz(ux_c) + lift(tau_ux1_c) = 0")
-    problem.add_equation("uz_z_c - dz(uz_c) + lift(tau_uz1_c) = 0")
+    problem.add_equation("dt(T_c) - kappa*( dx(dx(T_c)) + dz(T_z_c) ) + lift_c(tau_T2_c) - (-nabad_c+2)*uz_c= 0")
+    problem.add_equation("dt(ux_c) - nu*( dx(dx(ux_c)) + dz(ux_z_c) ) + dx(p_c)     + lift_c(tau_ux2_c)= 0")
+    problem.add_equation("dt(uz_c) - nu*( dx(dx(uz_c)) + dz(uz_z_c) ) + dz(p_c) - T_c + lift_c(tau_uz2_c) = 0")
+    problem.add_equation("T_z_c - dz(T_c) + lift_c(tau_T1_c) = 0")
+    problem.add_equation("ux_z_c - dz(ux_c) + lift_c(tau_ux1_c) = 0")
+    problem.add_equation("uz_z_c - dz(uz_c) + lift_c(tau_uz1_c) = 0")
     #Matching Conditions
     problem.add_equation("p_r(z=z_match) - p_c(z=z_match) = 0")
     problem.add_equation("ux_r(z=z_match) - ux_c(z=z_match) = 0")

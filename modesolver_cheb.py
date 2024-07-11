@@ -36,7 +36,7 @@ wavenum_list = []
 NEV = config.getint('param','NEV')
 A = config.getfloat('param','A')
 sig = sig_og = config.getfloat('param','sig')
-solver = modesolver (Rayleigh, Prandtl, kx, Nz, A, sig,Lz,NEV=10, target=0)
+solver = modesolver (Rayleigh, Prandtl, kx, Nx,Nz, A, sig,L_x,Lz,NEV=10, target=0)
 name=config.get('param','name')
 
 # Bases
