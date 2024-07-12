@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --account=b1094
 #SBATCH --partition=ciera-std
-#SBATCH --time=00:05:00
+#SBATCH --time=01:00:00
 #SBATCH --mem=32G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=16
@@ -15,7 +15,6 @@ if [ -f /projects/b1094/software/dotfiles/.bashrc ]; then
 fi
 dedalus3
 mpirun -n $nprocs python3 $solver $config
-# mpirun -n $nprocs python3 ~/Convection/plotscripts/plot_snapshots.py $config
-# png2mp4 ${name}/frames/ ${name}/movie.mp4 120
-# echo ${name}/movie.mp4
-echo "succeeded"
+mpirun -n $nprocs python3 ~/Convection/plotscripts/plot_cheb.py $config
+png2mp4 ${name}/frames/ ${name}/movie.mp4 120
+echo ${name}/movie.mp4
