@@ -81,7 +81,7 @@ def main(filename, start, count, output):
                 ax.set_aspect('equal')
                 ax.set_adjustable('box', share=True)
                 c = ax.pcolor(xpop,zglob,globtask[index, ...].T, cmap='RdBu') #buoyancy
-                ax.set_title(titlelist[n])
+                ax.set_title(titlelist[n],pad=8)
                 fig.colorbar(c, ax=ax,location='top',orientation='horizontal')
                 # Call 3D plotting helper, slicing in time
                 # dset = file['tasks'][task_r]
