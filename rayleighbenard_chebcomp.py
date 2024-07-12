@@ -102,11 +102,14 @@ grad_u_r = d3.grad(u_r) + ez*lift_r(tau_u1_r) # First-order reduction
 grad_T_r = d3.grad(T_r) + ez*lift_r(tau_T1_r) # First-order reduction
 grad_u_c = d3.grad(u_c) + ez*lift_c(tau_u1_c) # First-order reduction
 grad_T_c = d3.grad(T_c) + ez*lift_c(tau_T1_c) # First-order reduction
+integx = lambda arg: d3.Integrate(arg, 'x')
+integ = lambda arg: d3.Integrate(integx(arg), 'z')
 #Adiabatic Parameterization
 ad_r = A-(A-1)*np.exp(-(z_r-(Lz/2))**2*(1/(2*sig**2)))
 ad_c = A-(A-1)*np.exp(-(z_c-(Lz/2))**2*(1/(2*sig**2)))
 nabad_r['g']=ad_r
 nabad_c['g']=ad_c
+#Variables list
 variables = [p_r, T_r, u_r, p_c, T_c, u_c]#, c, p2, T2, u2, c2, p4, T4, u4, c4
 taus = [tau_p, tau_T1_r, tau_T2_r, tau_u1_r, tau_u2_r,
         tau_T1_c, tau_T2_c, tau_u1_c, tau_u2_c] #tau_T21, tau_T22, tau_u21, tau_u22, tau_p2,tau_T41, tau_T42, tau_u41, tau_u42, tau_p4
@@ -160,13 +163,14 @@ dt = 1e-3
 
 # Flow properties
 flow = d3.GlobalFlowProperty(solver, cadence=10)
-flow.add_property(np.sqrt(u_c@u_c) / nu, name='Re')
+Reynolds_num = np.sqrt(u_c@u_c) / nu
+flow.add_property(Reynolds_num, name='Re')
 
 #Checkpoints 
 checkpoints = solver.evaluator.add_file_handler(name+'/checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
 checkpoints.add_tasks(solver.state, layout='g')
 
-# Analysis
+#Snapshots Analysis
 snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
 snapshots.add_task(T_r, name='buoyancy_r')
 snapshots.add_task(T_c, name='buoyancy_c')
@@ -174,6 +178,13 @@ vort_r=-d3.div(d3.skew(u_r))
 vort_c=-d3.div(d3.skew(u_c))
 snapshots.add_task(vort_r, name='vorticity_r')
 snapshots.add_task(vort_c, name='vorticity_c')
+
+#Profiles
+    #Reynolds number
+profiles = solver.evaluator.add_file_handler(name+'/profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
+profiles.add_task(integx(Reynolds_num), name = "reynolds")
+
+#CFL
 CFL = d3.CFL(solver, initial_dt=dt, cadence=3, safety=0.35, max_dt=maxtimestep, threshold=0.05)
 CFL.add_velocity(u_r)
 CFL.add_velocity(u_c)
