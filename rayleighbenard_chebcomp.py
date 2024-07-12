@@ -57,15 +57,17 @@ dtype = np.float64
 # Create coordinates and bases
 coords = d3.CartesianCoordinates('x', 'z')
 dist = d3.Distributor(coords, dtype=dtype)
-xbasis      = d3.RealFourier(coords['x'], size=Nx, bounds=(-Lx/2, Lx/2), dealias=3/2)
+xbasis      = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=3/2)
 zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(z_match, Lz), dealias=3/2)
 zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, z_match), dealias=3/2)
 
 # Fields
+calib_r=dist.Field(name='calib_r',bases=(xbasis,zbasis_r))
 p_r  = dist.Field(name='p_r', bases=(xbasis,zbasis_r))
 T_r  = dist.Field(name='T_r', bases=(xbasis,zbasis_r))
 u_r  = dist.VectorField(coords, name='u_r', bases=(xbasis,zbasis_r))
 nabad_r = dist.Field(name='nabad_r', bases=(zbasis_r, ))
+calib_c=dist.Field(name='calib_c',bases=(xbasis,zbasis_c))
 p_c  = dist.Field(name='p_c', bases=(xbasis,zbasis_c))
 T_c  = dist.Field(name='T_c', bases=(xbasis,zbasis_c))
 u_c  = dist.VectorField(coords, name='u_c', bases=(xbasis,zbasis_c))
@@ -90,8 +92,9 @@ tau_T42  = dist.Field(name='tau_T42', bases=xbasis)
 tau_u41  = dist.VectorField(coords, name='tau_u41', bases=xbasis)
 tau_u42  = dist.VectorField(coords, name='tau_u42', bases=xbasis)
 
-x, z_r  = dist.local_grids(xbasis, zbasis_r)
-x, z_c = dist.local_grids(xbasis, zbasis_c)
+z_r  = dist.local_grids(zbasis_r,)[0]
+z_c = dist.local_grids(zbasis_c,)[0]
+x = dist.local_grids(xbasis,)[0]
 ex, ez = coords.unit_vector_fields(dist)
 dz = lambda A: d3.Differentiate(A, coords['z'])
 lift_basis_r  = zbasis_r.derivative_basis(1)
@@ -145,18 +148,21 @@ solver.stop_sim_time = st
 logger.info('Solver built')
 
 # Initial conditions
-T_r.fill_random('g', seed=42, distribution='normal', scales=(0.25, 0.25), scale=5e-3) # Random noise
-T_c.fill_random('g', seed=5729, distribution='normal', scales=(0.25, 0.25), scale=5e-3) # Random noise
+T_r.fill_random('g', seed=42, distribution='normal', scale=1e-3) # Random noise  scales=(0.25, 0.25),
+T_c.fill_random('g', seed=5729, distribution='normal', scale=1e-3) # Random noise  scales=(0.25, 0.25),
 T_r.change_scales((1, 1))
 T_c.change_scales((1, 1))
-
-z_i = 0.5
-del_z = 0.02
-T_r['g'] *= (z_r*(Lz-z_r)) * 0.5*(1 - np.tanh( (z_r - 0.4)/del_z ))
-T_c['g'] *= (z_c*(Lz-z_c)) * 0.5*(1 - np.tanh( (z_c - 0.4)/del_z ))
-T_func = lambda z: del_z*np.log(np.cosh( (z-z_i)/del_z ))
-T_r['g'] += -1*(z_r - T_func(z_r) - 1 + T_func(0) ) + T_top*(z_r + T_func(z_r) - T_func(0))
-T_c['g'] += -1*(z_c - T_func(z_c) - 1 + T_func(0) ) + T_top*(z_c + T_func(z_c) - T_func(0))
+T_r['g'] *= z_r * (Lz - z_r) # Damp noise at walls
+T_r['g'] += Lz - 2*z_r # Add linear background
+T_c['g'] *= z_c * (Lz - z_c) # Damp noise at walls
+T_c['g'] += Lz - 2*z_c # Add linear background
+# z_i = 0.5
+# del_z = 0.02
+# T_r['g'] *= (z_r*(Lz-z_r)) * 0.5*(1 - np.tanh( (z_r - 0.4)/del_z ))
+# T_c['g'] *= (z_c*(Lz-z_c)) * 0.5*(1 - np.tanh( (z_c - 0.4)/del_z ))
+# T_func = lambda z: del_z*np.log(np.cosh( (z-z_i)/del_z ))
+# T_r['g'] += -1*(z_r - T_func(z_r) - 1 + T_func(0) ) + T_top*(z_r + T_func(z_r) - T_func(0))
+# T_c['g'] += -1*(z_c - T_func(z_c) - 1 + T_func(0) ) + T_top*(z_c + T_func(z_c) - T_func(0))
 
 # Initial timestep
 dt = 1e-3
@@ -171,6 +177,8 @@ checkpoints = solver.evaluator.add_file_handler(name+'/checkpoints', sim_dt=100,
 checkpoints.add_tasks(solver.state, layout='g')
 
 #Snapshots Analysis
+calib_r['g']=z_r*x
+calib_c['g']=z_c*x
 snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
 snapshots.add_task(T_r, name='buoyancy_r')
 snapshots.add_task(T_c, name='buoyancy_c')

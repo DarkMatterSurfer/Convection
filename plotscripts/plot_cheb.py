@@ -31,6 +31,7 @@ def main(filename, start, count, output):
     # Plot settings
     tasks_r = ['buoyancy_r', 'vorticity_r']
     tasks_c = ['buoyancy_c', 'vorticity_c']
+    titlelist=['Buoyancy','Vorticity']
     scale = 3
     dpi = 200
     title_func = lambda sim_time:'Ra= '+f"{(Ra):.1e}" +' t = {:.3f}'.format(sim_time)
@@ -45,21 +46,49 @@ def main(filename, start, count, output):
     # Create multifigure
     mfig = plot_tools.MultiFigure(nrows, ncols, image, pad, margin, scale)
     fig = mfig.figure
-
+    
     # Plot writes
     with h5py.File(filename, mode='r') as file:
+        zpop = []
+        xpop = None
+        keylist = file['scales'].keys()
+        for i in keylist:
+            if 'z_hash' in i:
+                zpop.append(file['scales'][i][()])
+            elif 'x_hash' in i:
+                xpop = file['scales'][i][()]
+        if len(zpop)<2:
+            print('Unavailable zpop')
+            raise
+        if xpop is None: 
+            print('Unavailable xpop')
+            raise
+        if zpop[0][0] < zpop[1][0]:
+            zglob = np.concatenate((zpop[0],zpop[1]))
+        else:
+            zglob = np.concatenate((zpop[1],zpop[0]))
         for index in range(start, start+count):
+            fig, axs = plt.subplots(1, 2)
+            # fig.colorbar(c, ax=ax)
             for n in range(len(tasks_r)):
-                task_r=tasks_r[n]
-                task_c=tasks_c[n]
+                # tasks_r = ['buoyancy_r', 'vorticity_r']
+                # tasks_c = ['buoyancy_c', 'vorticity_c']
+                dta_r=file['tasks'][tasks_r[n]][()]
+                dta_c=file['tasks'][tasks_c[n]][()]
+                globtask = np.concatenate((dta_c,dta_r),axis = 2)
                 # Build subfigure axes
-                i, j = divmod(n, ncols)
-                axes = mfig.add_axes(i, j, [0, 0, 1, 1])
+                ax = axs[n]
+                ax.set_aspect('equal')
+                ax.set_adjustable('box', share=True)
+                c = ax.pcolor(xpop,zglob,globtask[index, ...].T, cmap='RdBu') #buoyancy
+                ax.set_title(titlelist[n])
+                fig.colorbar(c, ax=ax,location='top',orientation='horizontal')
                 # Call 3D plotting helper, slicing in time
-                dset = file['tasks'][task_r]
-                plot_tools.plot_bot_3d(dset, 0, index, axes=axes, title=task_r, even_scale=True, visible_axes=False)
-                dset = file['tasks'][task_c]
-                plot_tools.plot_bot_3d(dset, 0, index, axes=axes, title=task_c, even_scale=True, visible_axes=False)
+                # dset = file['tasks'][task_r]
+                # plot_tools.plot_bot_3d(dset, 0, index, axes=axes, title=task_r, even_scale=True, visible_axes=False)
+                # dset = file['tasks'][task_c]
+                # plot_tools.plot_bot_3d(dset, 0, index, axes=axes, title=task_c, even_scale=True, visible_axes=False)
+        
             # Add time title
             title = title_func(file['scales/sim_time'][index])
             title_height = 1 - 0.5 * mfig.margin.top / mfig.fig.y
@@ -69,7 +98,7 @@ def main(filename, start, count, output):
             savepath = output.joinpath(savename)
             fig.savefig(str(savepath), dpi=dpi)
             fig.clear()
-    plt.close(fig)
+            plt.close(fig)
 
 
 if __name__ == "__main__":

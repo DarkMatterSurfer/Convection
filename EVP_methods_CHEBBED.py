@@ -112,7 +112,7 @@ def modesolver (Rayleigh, Prandtl, kx, Nx,Nz, A, sig,Lx,Lz,NEV=10, target=0):
     tau_p = dist.Field(name='tau_p')
     p_r  = dist.Field(name='p_r', bases=(zbasis_r,))
     T_r  = dist.Field(name='T_r', bases=(zbasis_r,))
-    T_z_r  = dist.Field(name='T_z_r', bases=(zbasis_c,))
+    T_z_r  = dist.Field(name='T_z_r', bases=(zbasis_r,))
     ux_r  = dist.Field(name='ux_r', bases=(zbasis_r,))
     uz_r  = dist.Field(name='uz_r', bases=(zbasis_r,))
     ux_z_r  = dist.Field(name='ux_z_r', bases=(zbasis_r,))
