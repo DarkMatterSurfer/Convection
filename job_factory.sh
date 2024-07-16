@@ -10,7 +10,7 @@ if [ -d "$name" ]; then
     rm -rf $name
 fi
 mkdir $name
-cp $EVPsolver $name
+# cp $EVPsolver $name
 cp $config $name
 cp $solver $name
 cp $template $name/$name.sh
