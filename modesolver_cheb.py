@@ -34,9 +34,9 @@ kx = config.getfloat('param','kx')
 kx_global = eval(config.get('param','kx_global'))
 wavenum_list = []
 NEV = config.getint('param','NEV')
-A = config.getfloat('param','A')
+ad = config.getfloat('param','back_ad')
 sig = sig_og = config.getfloat('param','sig')
-solver = modesolver (Rayleigh, Prandtl, kx, Nx,Nz, A, sig,L_x,Lz,NEV=10, target=0)
+solver = modesolver(Rayleigh, Prandtl, kx, Nx,Nz,ad,sig,L_x,Lz,NEV=10, target=0)
 name=config.get('param','name')
 
 # Bases
@@ -44,9 +44,13 @@ zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128)
 zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, Lz))
 z = dist.local_grid(zbasis)
+z_match = Lz/2
 arr_x = np.linspace(0,L_x,Nx)
 mode=np.exp(1j*kx*arr_x)
 sp = solver.subproblems[0]
+for i in solver.subproblems: 
+    print(i.group)
+sys.exit()
 evals = solver.eigenvalues[np.isfinite(solver.eigenvalues)]
 evals = evals[np.argsort(-evals.real)]
 print(f"Slowest decaying mode: λ = {evals[0]}")

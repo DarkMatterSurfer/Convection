@@ -56,7 +56,7 @@ epsilon = config.getfloat('param','epsilon')
 tol = config.getfloat('param','tol')
 name = config.get('param', 'name')
 #Eigenvalue Spectrum Function
-def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lx,Lz):
+def getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz, NEV, target):
     comm = MPI.COMM_WORLD
     # Compute growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
@@ -65,7 +65,7 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lx,Lz):
     growth_locallist = []
     frequecny_locallist = []
     for kx in kx_local:
-        eigenvals = modesolver(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target).eigenvalues #np.array of complex
+        eigenvals = geteigenval(Rayleigh, Prandtl, kx,Nx,Nz, ad, sig,Lx,Lz, NEV, target) #np.array of complex
         eigenlen = len(eigenvals)
         gr_max = -1*np.inf
         max_index = -1
@@ -107,7 +107,7 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lx,Lz):
 
 def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
     counter = 0
-    growthrateslist=getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lx,Lz)
+    growthrateslist=getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target)
     max_omeg = max(growthrateslist)
     if rank == 0:
         print('Z Resolution:',Nz)
@@ -122,9 +122,9 @@ def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
     #Finding marginal stability
     Ra_plus = Rayleigh*epsilon
     Ra_minus= Rayleigh/epsilon
-    plusamp_list=getgrowthrates(Ra_plus, Prandtl,Nz, ad, sig,Lx,Lz)
+    plusamp_list=getgrowthrates(Ra_plus, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target)
     omeg_plusRa=max(plusamp_list) 
-    minusamp_list=getgrowthrates(Ra_minus, Prandtl,Nz, ad, sig,Lx,Lz)
+    minusamp_list=getgrowthrates(Ra_minus, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target)
     omeg_minusRa=max(minusamp_list)
     omeg_guess = np.inf
 
@@ -134,7 +134,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
         Amp_list = np.linspace(105,130,30)
         guessrates_solve = []
         for i in Amp_list:
-            guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lx,Lz)))
+            guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl, Nz, i, ad,sig, NEV, target)))
         if rank == 0: 
             print(guessrates_solve)
         if rank == 0: 
@@ -217,6 +217,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
     return results
 
 def modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
+    
     print('Mode conditions:\n\n')
     print('Rayleigh:', Rayleigh)
     print('Sig:', sig)
@@ -240,8 +241,8 @@ def modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
     b_mode=(np.outer(b['g'],mode)*phaser).real
     return b_mode
 #Plotting
-# if rank == 0:
-#     adiabatresolutionchecker(ad,sig,Nz,Lz,path)
+if rank == 0:
+    adiabatresolutionchecker(ad,sig,Nz,Lz,path)
 findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz, NEV, target)
 
 sys.exit()

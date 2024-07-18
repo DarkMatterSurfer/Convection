@@ -15,13 +15,13 @@ path = os.path.dirname(os.path.abspath(__file__))
 from scipy.optimize import minimize_scalar
 import time
 #Eigenvalue Spectrum Function
-def geteigenval(Rayleigh, Prandtl, kx,Nz, ad, sig,Lx,Lz,Nx=2,NEV=10, target=0):
+def geteigenval(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV=10, target=0):
     """Compute maximum linear growth rate."""
     # print(ad)
     # Create coordinates and bases
     coords = d3.CartesianCoordinates('x', 'z')
     dist = d3.Distributor(coords, dtype=np.complex128)
-    xbasis =  d3.ComplexFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=3/2)
+    xbasis =  d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx), dealias=3/2)
     zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
     zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
 
@@ -97,17 +97,16 @@ def geteigenval(Rayleigh, Prandtl, kx,Nz, ad, sig,Lx,Lz,Nx=2,NEV=10, target=0):
     problem.add_equation("T_c(z=0) = 0")
 
     # Solver
-    solver = problem.build_solver()
-    # print(solver.subproblems)
-    solver.solve_sparse(solver.subproblems[0], NEV=NEV, target=target)
+    solver = problem.build_solver(entry_cutoff=0)
+    solver.solve_sparse(solver.subproblems[1], NEV, target=target)
     return solver.eigenvalues
 
 def modesolver (Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
 
     # Bases
     coords = d3.CartesianCoordinates('x', 'z')
-    dist = d3.Distributor(coords, dtype=np.complex128, comm=MPI.COMM_SELF)
-    xbasis  = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx/2), dealias=3/2)
+    dist = d3.Distributor(coords, dtype=np.complex128)
+    xbasis      = d3.RealFourier(coords['x'], size=Nx, bounds=(0, Lx/2), dealias=3/2)
     zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
     zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
     # Fields
@@ -143,11 +142,9 @@ def modesolver (Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
     tau_uz1_c = dist.Field(name='tau_uz1_c')
     tau_uz2_c = dist.Field(name='tau_uz2_c')
 
-    x = dist.local_grids(xbasis,)[0]
-    z_r  = dist.local_grids(zbasis_r, )[0]
-    z_c = dist.local_grids(zbasis_c, )[0]
+    x, z_r  = dist.local_grids(xbasis, zbasis_r)
+    x, z_c = dist.local_grids(xbasis, zbasis_c)
     ex, ez = coords.unit_vector_fields(dist)
-    z_match = Lz/2
     dz = lambda A: d3.Differentiate(A, coords['z'])
     #Substitutions 
     kappa = (Rayleigh * Prandtl)**(-1/2)
@@ -156,7 +153,7 @@ def modesolver (Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
     lift_basis_c = zbasis_c.derivative_basis(1)
     lift_r  = lambda A: d3.Lift(A, lift_basis_r, -1)
     lift_c = lambda A: d3.Lift(A, lift_basis_c, -1)
-    dt = lambda A: -1j*omega*A
+    dt = lambda A: omega*A
     dx = lambda A: 1j*kx*A
     #Adiabatic Parameterization
     ad_r = ad-(ad-1)*np.exp(-(z_r-(Lz/2))**2*(1/(2*sig**2)))
@@ -200,12 +197,13 @@ def modesolver (Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
     problem.add_equation("T_r(z=Lz) = 0")
     problem.add_equation("ux_r(z=Lz) = 0")
     problem.add_equation("uz_r(z=Lz) = 0")
-    problem.add_equation("integ(p_r) = 0") # Pressure gauge
+    problem.add_equation("integ(p) = 0") # Pressure gauge
 
     # Solver
     solver = problem.build_solver()
     sp = solver.subproblems[0]
-    solver.solve_sparse(sp,NEV,target=target)
+
+    solver.solve_dense(sp)
     return solver
 def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     # Create coordinates and bases
