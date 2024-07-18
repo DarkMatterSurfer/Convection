@@ -204,7 +204,7 @@ try:
     logger.info('Starting loop')
     while solver.proceed:
 
-        dt = CFL.compute_timestep()
+        dt = maxtimestep#CFL.compute_timestep()
 
         if solver.sim_time > 1:
           dt = min(dt,maxtimestep)

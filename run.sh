@@ -11,9 +11,10 @@ source $config
 # fi
 mkdir $name
 cp $config $name
+mpiexec -n $nprocs python3 marginallystablesolver_racheb.py $config
 # mpiexec -n $nprocs python3 ~/Convection/rayleighbenard_chebcomp.py $config
-mpiexec -n $nprocs python3 ~/Convection/plotscripts/plot_cheb.py $config
-png2mp4 ${name}/frames/ ${name}/movie.mp4 120
-echo ${name}/movie.mp4
-code ${name}/movie.mp4
-rm -rf ${name}_frames ; rm -rf snapshots
+# mpiexec -n $nprocs python3 ~/Convection/plotscripts/plot_cheb.py $config
+# png2mp4 ${name}/frames/ ${name}/movie.mp4 120
+# echo ${name}/movie.mp4
+# code ${name}/movie.mp4
+# rm -rf ${name}_frames ; rm -rf snapshots
