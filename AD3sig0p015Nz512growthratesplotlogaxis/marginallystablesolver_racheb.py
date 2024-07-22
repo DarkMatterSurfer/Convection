@@ -115,26 +115,26 @@ def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     #     print('here')
     if rank == 0:
         print('1 here. In findmarginalomega/growthrateslist')
-    growthrateslist=getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz)
-    max_omeg = max(growthrateslist)
-    if rank == 0:
-        print('Z Resolution:',Nz)
-        print('Intial Rayleigh:', Rayleigh)
-        print('Sigma:', sig)
-        print('Background adiabat:', ad)
-        print('#############')
-        print('Intial parameters maximum growth rate',max_omeg)
-        print('#############')
-    if rank == 0:
-        print('Intial Growth Rates:',growthrateslist)
-    #Finding marginal stability
-    Ra_plus = Rayleigh*epsilon
-    Ra_minus= Rayleigh/epsilon
-    plusamp_list=getgrowthrates(Ra_plus, Prandtl,Nz, ad, sig,Lz)
-    omeg_plusRa=max(plusamp_list) 
-    minusamp_list=getgrowthrates(Ra_minus, Prandtl,Nz, ad, sig,Lz)
-    omeg_minusRa=max(minusamp_list)
-    omeg_guess = np.inf
+    # growthrateslist=getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz)
+    # max_omeg = max(growthrateslist)
+    # if rank == 0:
+    #     print('Z Resolution:',Nz)
+    #     print('Intial Rayleigh:', Rayleigh)
+    #     print('Sigma:', sig)
+    #     print('Background adiabat:', ad)
+    #     print('#############')
+    #     print('Intial parameters maximum growth rate',max_omeg)
+    #     print('#############')
+    # if rank == 0:
+    #     print('Intial Growth Rates:',growthrateslist)
+    # #Finding marginal stability
+    # Ra_plus = Rayleigh*epsilon
+    # Ra_minus= Rayleigh/epsilon
+    # plusamp_list=getgrowthrates(Ra_plus, Prandtl,Nz, ad, sig,Lz)
+    # omeg_plusRa=max(plusamp_list) 
+    # minusamp_list=getgrowthrates(Ra_minus, Prandtl,Nz, ad, sig,Lz)
+    # omeg_minusRa=max(minusamp_list)
+    # omeg_guess = np.inf
 
     #Plotting test amplitudes
     doamptest = config.getboolean('param', 'plotornot')
@@ -252,7 +252,7 @@ def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
                 print("###################################################################################")
             results = [ra_guess, sig,maxomeg_kx, ad]
             comm.barrier()
-    return results
+    return 
 
 def modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
     print('Mode conditions:\n\n')

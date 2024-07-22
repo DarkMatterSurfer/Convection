@@ -56,7 +56,7 @@ epsilon = config.getfloat('param','epsilon')
 tol = config.getfloat('param','tol')
 name = config.get('param', 'name')
 #Eigenvalue Spectrum Function
-def getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz, NEV, target):
+def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     comm = MPI.COMM_WORLD
     # Compute growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
@@ -65,7 +65,7 @@ def getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz, NEV, target):
     growth_locallist = []
     frequecny_locallist = []
     for kx in kx_local:
-        eigenvals = geteigenval(Rayleigh, Prandtl, kx,Nx,Nz, ad, sig,Lx,Lz, NEV, target) #np.array of complex
+        eigenvals = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target).eigenvalues #np.array of complex
         eigenlen = len(eigenvals)
         gr_max = -1*np.inf
         max_index = -1
@@ -105,9 +105,9 @@ def getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz, NEV, target):
         ratelist.append(i)
     return ratelist
 
-def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
+def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     counter = 0
-    growthrateslist=getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target)
+    growthrateslist=getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz)
     max_omeg = max(growthrateslist)
     if rank == 0:
         print('Z Resolution:',Nz)
@@ -122,9 +122,9 @@ def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
     #Finding marginal stability
     Ra_plus = Rayleigh*epsilon
     Ra_minus= Rayleigh/epsilon
-    plusamp_list=getgrowthrates(Ra_plus, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target)
+    plusamp_list=getgrowthrates(Ra_plus, Prandtl,Nz, ad, sig,Lz)
     omeg_plusRa=max(plusamp_list) 
-    minusamp_list=getgrowthrates(Ra_minus, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target)
+    minusamp_list=getgrowthrates(Ra_minus, Prandtl,Nz, ad, sig,Lz)
     omeg_minusRa=max(minusamp_list)
     omeg_guess = np.inf
 
@@ -134,7 +134,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
         Amp_list = np.linspace(105,130,30)
         guessrates_solve = []
         for i in Amp_list:
-            guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl, Nz, i, ad,sig, NEV, target)))
+            guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz)))
         if rank == 0: 
             print(guessrates_solve)
         if rank == 0: 
@@ -152,7 +152,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
         while abs(0-omeg_guess) > tol:
             ispluscloser = abs(omeg_plusRa) < abs(omeg_minusRa)
             ra_guess = (Ra_plus*(omeg_minusRa)-Ra_minus*(omeg_plusRa))/(omeg_minusRa-omeg_plusRa)
-            finalrates = getgrowthrates(ra_guess, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target)
+            finalrates = getgrowthrates(ra_guess, Prandtl,Nz, ad, sig,Lz)
             omeg_guess = max(finalrates)
             if ispluscloser: 
                 Ra_minus = ra_guess 
@@ -183,6 +183,23 @@ def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
                     maxomeg_kx = wavenum_list[i]
             #Writing conditions for marginal stability -> IN .CSV FILE
             if rank == 0:
+                full_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'AD{}'.format(ad)+'sig{}'.format(sig)+'/Rayleigh{}/'.format(Rayleigh)+'/'
+                if not os.path.exists(full_dir):
+                    os.makedirs(full_dir)
+                csvname = full_dir+'Nz{}'.format(Nz)+'.csv'
+                with open(csvname, 'w', newline='') as csvfile:
+                    stabilitylog = csv.writer(csvfile, delimiter=',',
+                                            quotechar=' ', quoting=csv.QUOTE_MINIMAL)
+                    stabilitylog.writerow("Condtions for marginal stability:"+'\n'+'|------------------|'+'\n')
+                    stabilitylog.writerow('Z Resolution: '+str(Nz))
+                    stabilitylog.writerow('Tolerance: '+str(tol))
+                    stabilitylog.writerow('Marginal Rayleigh Number: '+str(ra_guess))
+                    stabilitylog.writerow('Prandtl Number: '+str(Prandtl))
+                    stabilitylog.writerow('Background Adiabat: '+str(ad))
+                    stabilitylog.writerow('Strip Adiabat: '+str(1))
+                    stabilitylog.writerow('Sigma: '+str(sig))
+                    stabilitylog.writerow('Wavenumber (kx) for maximum growth rate: '+str(maxomeg_kx))
+                    stabilitylog.writerow('Maximum growth rate: '+str(omeg_guess))
                 full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'AD{}'.format(ad)+'sig{}'.format(sig)+'/Rayleigh{}/'.format(Rayleigh)+'/'
                 if not os.path.exists(full_dir):
                     os.makedirs(full_dir)
@@ -217,12 +234,11 @@ def findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz, NEV, target):
     return results
 
 def modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
-    
     print('Mode conditions:\n\n')
     print('Rayleigh:', Rayleigh)
     print('Sig:', sig)
     #Solver evaluated
-    solver = modesolver(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target)
+    solver = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target)
     sp = solver.subproblems[0]
     evals = solver.eigenvalues[np.isfinite(solver.eigenvalues)]
     evals = evals[np.argsort(evals.imag)]
@@ -241,9 +257,9 @@ def modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
     b_mode=(np.outer(b['g'],mode)*phaser).real
     return b_mode
 #Plotting
-if rank == 0:
-    adiabatresolutionchecker(ad,sig,Nz,Lz,path)
-findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz, NEV, target)
+# if rank == 0:
+#     adiabatresolutionchecker(ad,sig,Nz,Lz,path)
+findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz)
 
 sys.exit()
 # Bases

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 comm = MPI.COMM_WORLD
 import os
 import sys
-from EVP_methods import modesolver
+from Convection.no_compoundingEVP.EVP_methods import modesolver
 path = os.path.dirname(os.path.abspath(__file__))
 if len(sys.argv) < 2:
     # raise

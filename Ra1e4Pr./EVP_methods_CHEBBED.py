@@ -201,19 +201,9 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
     problem.add_equation("integ(p_r) = 0") # Pressure gauge
 
     # Solver
-    
     solver = problem.build_solver()
     sp = solver.subproblems[0]
-    try:
-        if rank == 0:
-            print('3 here. trying sparse')
-        solver.solve_sparse(sp,NEV,target=target,raise_on_mismatch=True)
-    except:
-        if rank == 0:
-            print('sparse solve failed task trying dense solve')
-        solver.solve_dense(sp)
-    
-    print('rank', str(rank))
+    solver.solve_sparse(sp,NEV,target=target,raise_on_mismatch=True)
     return solver
 def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     # Create coordinates and bases
@@ -238,10 +228,7 @@ def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     plt.axvline(x=1/2-sig, ymin=0, ymax=4, color = 'r', linestyle = '--')
     plt.axvline(x=1/2+sig, ymin=0, ymax=4, color = 'r', linestyle = '--')
     title = 'Adiabat resolution overlay Nz={}'.format(Nz)+r' $\sigma=$'+'{}'.format(sig)
-    full_dir = path+'/resolutioncheckplots/'+'sig{}'.format(sig)+'/'
-    if not os.path.exists(full_dir):
-        os.makedirs(full_dir)
     plt.title(title)
-    plt.savefig(full_dir+'Nz{}'.format(Nz)+'sig{}'.format(sig)+'adiabatplot.png')
+    plt.savefig(path+'/Nz{}'.format(Nz)+'sig{}'.format(sig)+'adiabatplot.png')
     plt.close()
     return

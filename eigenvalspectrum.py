@@ -5,7 +5,7 @@ import logging
 import sys
 import mpi4py
 from mpi4py import MPI
-from EVP_methods_CHEBBED import geteigenval 
+from EVP_methods_CHEBBED import modesolver
 import os
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -63,7 +63,7 @@ def getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz,NEV=10,target=0):
     frequecny_locallist = []
     for kx in kx_local:
         print(kx)
-        eigenvals = geteigenval(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV,target) #np.array of complex
+        eigenvals = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target).eigenvalues #np.array of complex
         eigenlen = len(eigenvals)
         gr_max = -1*np.inf
         max_index = -1

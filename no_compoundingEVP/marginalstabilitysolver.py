@@ -15,7 +15,7 @@ import os
 import csv
 path = os.path.dirname(os.path.abspath(__file__))
 from scipy.optimize import minimize_scalar
-from EVP_methods import geteigenval , modesolver
+from Convection.no_compoundingEVP.EVP_methods import geteigenval , modesolver
 import time
 # configfile = path +"/options.cfg"
 # args = docopt(__doc__)

@@ -64,11 +64,7 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     # for all 
     growth_locallist = []
     frequecny_locallist = []
-    # if rank == 0:
-    #     print('here')
     for kx in kx_local:
-        if rank == 0:
-            print('2 here. In getgrowthrates')
         eigenvals = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target).eigenvalues #np.array of complex
         eigenlen = len(eigenvals)
         gr_max = -1*np.inf
@@ -111,10 +107,6 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz):
 
 def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     counter = 0
-    # if rank ==0:
-    #     print('here')
-    if rank == 0:
-        print('1 here. In findmarginalomega/growthrateslist')
     growthrateslist=getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz)
     max_omeg = max(growthrateslist)
     if rank == 0:
@@ -139,40 +131,27 @@ def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     #Plotting test amplitudes
     doamptest = config.getboolean('param', 'plotornot')
     if doamptest:
-        ra_list = 10**np.linspace(1,15,20)
-        # ra_list = np.linspace(1e3,1e6,40)
+        Amp_list = np.linspace(105,130,30)
         guessrates_solve = []
-        if rank == 0:
-            print('here. In findmarginalomega/guessratessolve loop')
-        for index, i in enumerate(ra_list):
-            if rank == 0:
-                print('Index=',str(index))
-                print('Runs left',str(len(ra_list+1)-(index+1)))
-                print('Rayleigh: ',str(ra_list[index]))
-            guessrates_solve.append(max(getgrowthrates(ra_list[index], Prandtl,Nz, ad, sig,Lz)))
+        for i in Amp_list:
+            guessrates_solve.append(max(getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz)))
         if rank == 0: 
             print(guessrates_solve)
-        if rank == 0:
-            print('here. In findmarginalomega/figureplotting')
         if rank == 0: 
             # print(guessrates_solve)
-            plt.scatter(ra_list,guessrates_solve)
-            plt.xscale('log')
-            plt.xlabel('Rayleigh Number')
+            plt.scatter(Amp_list,guessrates_solve)
+            plt.xlabel('Amplitudes')
             plt.ylabel(r'Growth Guess ($\omega_{guess}$)')
-            plt.title(r'$\nabla_{ad}$='+'{}'.format(ad)+' Sig={}'.format(sig)+' Nz='+str(Nz))
-            full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'sig{}'.format(sig)+'/'+'AD{}'.format(ad)+'/'
+            plt.title('Ra={}'.format(Rayleigh)+' Sig={}'.format(sig)+' Nz='+str(Nz))
+            full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'Ra{}'.format(Rayleigh)+'Pr{}'.format(Prandtl)+'/sig{}/'.format(sig)+'/'
             if not os.path.exists(full_dir):
                 os.makedirs(full_dir)
-            plt.savefig(full_dir+'AD={}'.format(ad)+'Nz={}'.format(Nz)+'_ranumsvsomeg_guess.png')
+            plt.savefig(full_dir+'Ra={}'.format(Rayleigh)+'Sig={}'.format(sig)+'Nz={}'.format(Nz)+'_amplitudesvsomeg_guess.png')
     else:
     # Rootsolving
         while abs(0-omeg_guess) > tol:
             ispluscloser = abs(omeg_plusRa) < abs(omeg_minusRa)
             ra_guess = (Ra_plus*(omeg_minusRa)-Ra_minus*(omeg_plusRa))/(omeg_minusRa-omeg_plusRa)
-            if ra_guess < 1:
-                print('')
-                break
             finalrates = getgrowthrates(ra_guess, Prandtl,Nz, ad, sig,Lz)
             omeg_guess = max(finalrates)
             if ispluscloser: 
@@ -277,10 +256,6 @@ def modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
     mode=np.exp(1j*kx*arr_x)
     b_mode=(np.outer(b['g'],mode)*phaser).real
     return b_mode
-findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz)
-sys.exit()
-if rank == 0:
-    adiabatresolutionchecker(ad,sig,Nz,Lz,path)
 #Plotting
 ad_list = np.linspace(1,9,9)
 if rank == 0:
@@ -306,6 +281,7 @@ ra_9 = findmarginalomega(marginalRalist[7], Prandtl,Nz, ad_list[8], sig,Lz)[0]
 marginalRalist.append(ra_9)
 print(ad_list)
 print(marginalRalist)
+sys.exit()
 findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz)
 raorigin = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sig,Lz)[0]
 marginalRalist.append(raorigin)
@@ -315,6 +291,8 @@ for i in range(len(ad_list)):
         print(marginalRalist[i-1])
         margRa = findmarginalomega(marginalRalist[i-1],Prandtl,ad_list[i],Nz,sig,Lz)[0]
         marginalRalist.append(margRa)
+if rank == 0:
+    adiabatresolutionchecker(ad,sig,Nz,Lz,path)
 # Bases
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
