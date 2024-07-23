@@ -154,13 +154,7 @@ T_r['g'] *= z_r * (Lz - z_r) # Damp noise at walls
 T_r['g'] += Lz - 2*z_r # Add linear background
 T_c['g'] *= z_c * (Lz - z_c) # Damp noise at walls
 T_c['g'] += Lz - 2*z_c # Add linear background
-# z_i = 0.5
-# del_z = 0.02
-# T_r['g'] *= (z_r*(Lz-z_r)) * 0.5*(1 - np.tanh( (z_r - 0.4)/del_z ))
-# T_c['g'] *= (z_c*(Lz-z_c)) * 0.5*(1 - np.tanh( (z_c - 0.4)/del_z ))
-# T_func = lambda z: del_z*np.log(np.cosh( (z-z_i)/del_z ))
-# T_r['g'] += -1*(z_r - T_func(z_r) - 1 + T_func(0) ) + T_top*(z_r + T_func(z_r) - T_func(0))
-# T_c['g'] += -1*(z_c - T_func(z_c) - 1 + T_func(0) ) + T_top*(z_c + T_func(z_c) - T_func(0))
+
 
 # Initial timestep
 dt = 1e-3

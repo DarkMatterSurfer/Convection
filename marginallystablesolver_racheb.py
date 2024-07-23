@@ -300,15 +300,15 @@ def growthratescurve(Prandtl,Nz, ad, sig,Lz):
         plt.ylabel(r'Growth Guess ($\omega_{guess}$)')
         plt.title(r'$\nabla_{ad}$='+'{}'.format(ad)+' Sig={}'.format(sig))
     return 
-powerNz = np.linspace(6,10,1)
+powerNz = np.linspace(6,6,1)
 listNz = []
 for i in range(len(powerNz)):
     listNz.append(2**i)
 if rank == 0:
     print(listNz)
-for i in range(len(powerNz)):
-    growthratescurve(Prandtl,i, ad, sig,Lz)
-full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'
+for resolutionNz in powerNz:
+    growthratescurve(Prandtl,resolutionNz, ad, sig,Lz)
+full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(full_dir):
     os.makedirs(full_dir)
 plt.savefig(full_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'_ranumsvsomeg_guess.png')
