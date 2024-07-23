@@ -107,8 +107,11 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
     # Bases
     coords = d3.CartesianCoordinates('x', 'z')
     dist = d3.Distributor(coords, dtype=np.complex128, comm=MPI.COMM_SELF)
-    zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
-    zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
+    try: 
+        zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
+        zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
+    except Exception as e:
+        print(e)
     # Fields
     omega = dist.Field(name='omega')
     tau_p = dist.Field(name='tau_p')

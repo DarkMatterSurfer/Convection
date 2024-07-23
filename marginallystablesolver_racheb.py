@@ -277,8 +277,45 @@ def modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
     mode=np.exp(1j*kx*arr_x)
     b_mode=(np.outer(b['g'],mode)*phaser).real
     return b_mode
-findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz)
+
+def growthratescurve(Prandtl,Nz, ad, sig,Lz):
+    ra_list = 10**np.linspace(1,25,30)
+    # ra_list = np.linspace(1e3,1e6,40)
+    guessrates_solve = []
+    if rank == 0:
+        print('here. In findmarginalomega/guessratessolve loop')
+        for index, i in enumerate(ra_list):
+            print('Index=',str(index))
+            print('Runs left',str(len(ra_list+1)-(index+1)))
+            print('Rayleigh: ',str(ra_list[index]))
+            guessrates_solve.append(max(getgrowthrates(ra_list[index], Prandtl,Nz, ad, sig,Lz)))
+        print(guessrates_solve)
+        print('here. In findmarginalomega/figureplotting')
+        # print(guessrates_solve)
+        color = list(np.random.choice(range(256), size=3))
+        plt.scatter(ra_list,guessrates_solve,label=str(Nz),c=color)
+        plt.legend()
+        plt.xscale('log')
+        plt.xlabel('Rayleigh Number')
+        plt.ylabel(r'Growth Guess ($\omega_{guess}$)')
+        plt.title(r'$\nabla_{ad}$='+'{}'.format(ad)+' Sig={}'.format(sig))
+    return 
+powerNz = np.linspace(6,10,1)
+listNz = []
+for i in range(len(powerNz)):
+    listNz.append(2**i)
+if rank == 0:
+    print(listNz)
+for i in range(len(powerNz)):
+    growthratescurve(Prandtl,i, ad, sig,Lz)
+full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'
+if not os.path.exists(full_dir):
+    os.makedirs(full_dir)
+plt.savefig(full_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'_ranumsvsomeg_guess.png')
+plt.close()
 sys.exit()
+
+findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz)
 if rank == 0:
     adiabatresolutionchecker(ad,sig,Nz,Lz,path)
 #Plotting

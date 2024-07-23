@@ -107,8 +107,11 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
     # Bases
     coords = d3.CartesianCoordinates('x', 'z')
     dist = d3.Distributor(coords, dtype=np.complex128, comm=MPI.COMM_SELF)
-    zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
-    zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
+    try: 
+        zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
+        zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
+    except Exception as e:
+        print(e)
     # Fields
     omega = dist.Field(name='omega')
     tau_p = dist.Field(name='tau_p')
@@ -201,9 +204,19 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
     problem.add_equation("integ(p_r) = 0") # Pressure gauge
 
     # Solver
+    
     solver = problem.build_solver()
     sp = solver.subproblems[0]
-    solver.solve_sparse(sp,NEV,target=target)
+    try:
+        if rank == 0:
+            print('3 here. trying sparse')
+        solver.solve_sparse(sp,NEV,target=target,raise_on_mismatch=True)
+    except:
+        if rank == 0:
+            print('sparse solve failed task trying dense solve')
+        solver.solve_dense(sp)
+    
+    print('rank', str(rank))
     return solver
 def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     # Create coordinates and bases
@@ -228,7 +241,10 @@ def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     plt.axvline(x=1/2-sig, ymin=0, ymax=4, color = 'r', linestyle = '--')
     plt.axvline(x=1/2+sig, ymin=0, ymax=4, color = 'r', linestyle = '--')
     title = 'Adiabat resolution overlay Nz={}'.format(Nz)+r' $\sigma=$'+'{}'.format(sig)
+    full_dir = path+'/resolutioncheckplots/'+'sig{}'.format(sig)+'/'
+    if not os.path.exists(full_dir):
+        os.makedirs(full_dir)
     plt.title(title)
-    plt.savefig(path+'/Nz{}'.format(Nz)+'sig{}'.format(sig)+'adiabatplot.png')
+    plt.savefig(full_dir+'Nz{}'.format(Nz)+'sig{}'.format(sig)+'adiabatplot.png')
     plt.close()
     return
