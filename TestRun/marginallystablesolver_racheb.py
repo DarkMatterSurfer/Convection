@@ -14,8 +14,10 @@ import sys
 import os 
 import csv
 path = os.path.dirname(os.path.abspath(__file__))
-from scipy.optimize import minimize_scalar, root_scalar
+from scipy.optimize import minimize_scalar
+from EVP_methods_CHEBBED import modesolver,adiabatresolutionchecker
 import time
+from scipy.optimize import minimize_scalar, root_scalar
 # configfile = path +"/options.cfg"
 # args = docopt(__doc__)
 if len(sys.argv) < 2:
@@ -34,10 +36,6 @@ config.read(str(configfile))
 Nz = config.getint('param', 'Nz')
 Nx = config.getint('param','Nx')
 Rayleigh = config.getfloat('param', 'Ra') 
-sig = sig_og = config.getfloat('param','sig')
-Rayleigh_sig = config.getfloat('param','Ra_sig')
-if not Rayleigh_sig == 0:
-    Rayleigh = (Rayleigh_sig)/((2*sig)**3)
 Prandtl = config.getfloat('param', 'Pr')
 Re_arg = config.getfloat('param','Re')
 Lz = config.getfloat('param','Lz')
@@ -51,130 +49,14 @@ maxomeg_kx = 0
 if rank == 0:
     print('Wavenumbers :',wavenum_list)
 NEV = config.getint('param','NEV')
-target = config.getint('param','target')
+target = config.getfloat('param','target')
+sig = sig_og = config.getfloat('param','sig')
 ad = config.getfloat('param','back_ad')
 #Search parameters
 epsilon = config.getfloat('param','epsilon')
 tol = config.getfloat('param','tol')
 name = config.get('param', 'name')
-
-def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz):
-
-    # Bases
-    coords = d3.CartesianCoordinates('x', 'z')
-    dist = d3.Distributor(coords, dtype=np.complex128, comm=MPI.COMM_SELF)
-    comm.barrier()
-    try: 
-        zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
-        zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
-    except Exception as e:
-        print(e)
-    # Fields
-    omega = dist.Field(name='omega')
-    tau_p = dist.Field(name='tau_p')
-    p_r  = dist.Field(name='p_r', bases=(zbasis_r,))
-    T_r  = dist.Field(name='T_r', bases=(zbasis_r,))
-    T_z_r  = dist.Field(name='T_z_r', bases=(zbasis_r,))
-    ux_r  = dist.Field(name='ux_r', bases=(zbasis_r,))
-    uz_r  = dist.Field(name='uz_r', bases=(zbasis_r,))
-    ux_z_r  = dist.Field(name='ux_z_r', bases=(zbasis_r,))
-    uz_z_r  = dist.Field(name='uz_z_r', bases=(zbasis_r,))
-    nabad_r = dist.Field(name='nabad_r', bases=(zbasis_r, ))
-    tau_T1_r = dist.Field(name='tau_b1_r')
-    tau_T2_r = dist.Field(name='tau_b2_r')
-    tau_ux1_r = dist.Field(name='tau_ux1_r')
-    tau_ux2_r = dist.Field(name='tau_ux2_r')
-    tau_uz1_r = dist.Field(name='tau_uz1_r')
-    tau_uz2_r = dist.Field(name='tau_uz2_r')
-
-    p_c  = dist.Field(name='p_c', bases=(zbasis_c,))
-    T_c  = dist.Field(name='T_c', bases=(zbasis_c,))
-    T_z_c  = dist.Field(name='T_z_c', bases=(zbasis_c,))
-    ux_c  = dist.Field(name='ux_c', bases=(zbasis_c,))
-    uz_c  = dist.Field(name='uz_c', bases=(zbasis_c,))
-    ux_z_c  = dist.Field(name='ux_z_c', bases=(zbasis_c,))
-    uz_z_c  = dist.Field(name='uz_z_c', bases=(zbasis_c,))
-    nabad_c = dist.Field(name='nabad_c', bases=(zbasis_c, ))
-    tau_T1_c = dist.Field(name='tau_b1_c')
-    tau_T2_c = dist.Field(name='tau_b2_c')
-    tau_ux1_c = dist.Field(name='tau_ux1_c')
-    tau_ux2_c = dist.Field(name='tau_ux2_c')
-    tau_uz1_c = dist.Field(name='tau_uz1_c')
-    tau_uz2_c = dist.Field(name='tau_uz2_c')
-
-    z_r  = dist.local_grids(zbasis_r, )[0]
-    z_c = dist.local_grids(zbasis_c, )[0]
-    ex, ez = coords.unit_vector_fields(dist)
-    z_match = Lz/2
-    dz = lambda A: d3.Differentiate(A, coords['z'])
-    #Substitutions 
-    nu = (Rayleigh / Prandtl)**(-1/2)
-    kappa = (Rayleigh*Prandtl)**(-1/2)
-    lift_basis_r  = zbasis_r.derivative_basis(1)
-    lift_basis_c = zbasis_c.derivative_basis(1)
-    lift_r  = lambda A: d3.Lift(A, lift_basis_r, -1)
-    lift_c = lambda A: d3.Lift(A, lift_basis_c, -1)
-    dt = lambda A: -1j*omega*A
-    dx = lambda A: 1j*kx*A
-    #Adiabatic Parameterization
-    ad_r = ad-(ad-1)*np.exp(-(z_r-(Lz/2))**2*(1/(2*sig**2)))
-    ad_c = ad-(ad-1)*np.exp(-(z_c-(Lz/2))**2*(1/(2*sig**2)))
-    nabad_r['g']=ad_r
-    nabad_c['g']=ad_c
-
-    # Problem
-    # First-order form: "div(f)" becomes "trace(grad_f)"
-    # First-order form: "lap(f)" becomes "div(grad_f)"
-    vars_r = [p_r, T_r, ux_r, uz_r, T_z_r, ux_z_r, uz_z_r, tau_T1_r, tau_T2_r, tau_ux1_r, tau_uz1_r, tau_ux2_r, tau_uz2_r,tau_p]
-    vars_c = [p_c, T_c, ux_c, uz_c, T_z_c, ux_z_c, uz_z_c, tau_T1_c, tau_T2_c, tau_ux1_c, tau_uz1_c, tau_ux2_c, tau_uz2_c]
-    problem = d3.EVP(vars_r+vars_c, namespace=locals(), eigenvalue=omega)
-    #Top Half
-    problem.add_equation("dx(ux_r) + uz_z_r + tau_p = 0")
-    problem.add_equation("dt(T_r) - kappa*( dx(dx(T_r)) + dz(T_z_r) ) + lift_r(tau_T2_r) - (-nabad_r+2)*uz_r= 0")
-    problem.add_equation("dt(ux_r) - nu*( dx(dx(ux_r)) + dz(ux_z_r) ) + dx(p_r)     + lift_r(tau_ux2_r)= 0")
-    problem.add_equation("dt(uz_r) - nu*( dx(dx(uz_r)) + dz(uz_z_r) ) + dz(p_r) - T_r + lift_r(tau_uz2_r) = 0")
-    problem.add_equation("T_z_r - dz(T_r) + lift_r(tau_T1_r) = 0")
-    problem.add_equation("ux_z_r - dz(ux_r) + lift_r(tau_ux1_r) = 0")
-    problem.add_equation("uz_z_r - dz(uz_r) + lift_r(tau_uz1_r) = 0")
-    #Bottom Half
-    problem.add_equation("dx(ux_c) + uz_z_c = 0")
-    problem.add_equation("dt(T_c) - kappa*( dx(dx(T_c)) + dz(T_z_c) ) + lift_c(tau_T2_c) - (-nabad_c+2)*uz_c= 0")
-    problem.add_equation("dt(ux_c) - nu*( dx(dx(ux_c)) + dz(ux_z_c) ) + dx(p_c)     + lift_c(tau_ux2_c)= 0")
-    problem.add_equation("dt(uz_c) - nu*( dx(dx(uz_c)) + dz(uz_z_c) ) + dz(p_c) - T_c + lift_c(tau_uz2_c) = 0")
-    problem.add_equation("T_z_c - dz(T_c) + lift_c(tau_T1_c) = 0")
-    problem.add_equation("ux_z_c - dz(ux_c) + lift_c(tau_ux1_c) = 0")
-    problem.add_equation("uz_z_c - dz(uz_c) + lift_c(tau_uz1_c) = 0")
-    #Matching Conditions
-    problem.add_equation("p_r(z=z_match) - p_c(z=z_match) = 0")
-    problem.add_equation("ux_r(z=z_match) - ux_c(z=z_match) = 0")
-    problem.add_equation("uz_r(z=z_match) - uz_c(z=z_match) = 0")
-    problem.add_equation("ux_z_r(z=z_match) - ux_z_c(z=z_match) = 0")
-    problem.add_equation("T_r(z=z_match) - T_c(z=z_match) = 0")
-    problem.add_equation("T_z_r(z=z_match) - T_z_c(z=z_match) = 0")
-    #Boundary Conditions
-    problem.add_equation("T_c(z=0) = 0")
-    problem.add_equation("ux_c(z=0) = 0")
-    problem.add_equation("uz_c(z=0) = 0")
-    problem.add_equation("T_r(z=Lz) = 0")
-    problem.add_equation("ux_r(z=Lz) = 0")
-    problem.add_equation("uz_r(z=Lz) = 0")
-    problem.add_equation("integ(p_r) = 0") # Pressure gauge
-
-    # Solver
-    
-    solver = problem.build_solver()
-    sp = solver.subproblems[0]
-    try:
-        if rank == 0:
-            print('here. trying sparse')
-        solver.solve_sparse(sp,NEV,target=target,raise_on_mismatch=True)
-    except:
-        if rank == 0:
-            print('sparse solve failed task trying dense solve')
-        solver.solve_dense(sp)
-    
-    # print('rank', str(rank))
-    return solver
+#Eigenvalue Spectrum Function
 def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     comm = MPI.COMM_WORLD
     # Compute growth rate over local wavenumbers
@@ -186,6 +68,8 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     # if rank == 0:
     #     print('here')
     for kx in kx_local:
+        if rank == 0:
+            print('2 here. In getgrowthrates')
         eigenvals = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target).eigenvalues #np.array of complex
         eigenlen = len(eigenvals)
         gr_max = -1*np.inf
@@ -199,8 +83,6 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz):
         growth_locallist.append(gr_max)
         frequecny_locallist.append(freq)
     #    growth_locallist.append(np.max())
-    if rank == 0:
-        print('in getgrowthrates')
     growth_local = np.array(growth_locallist)
     freq_local = np.array(frequecny_locallist)
     t2 = time.time()
@@ -227,6 +109,7 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     for i in growth_global:
         ratelist.append(i)
     return ratelist
+
 def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
     counter = 0
     growthrateslist=getgrowthrates(Rayleigh, Prandtl,Nz, ad, sig,Lz)
@@ -348,34 +231,191 @@ def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
         comm.barrier()
     return results
 
-ad_upper=50
-ad_lower=1
+def modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target):
+    print('Mode conditions:\n\n')
+    print('Rayleigh:', Rayleigh)
+    print('Sig:', sig)
+    #Solver evaluated
+    solver = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target)
+    sp = solver.subproblems[0]
+    evals = solver.eigenvalues[np.isfinite(solver.eigenvalues)]
+    evals = evals[np.argsort(evals.imag)]
+    print(f"Slowest decaying mode: λ = {evals[0]}")
+    solver.set_state(np.argmin(np.abs(solver.eigenvalues - evals[0])), sp.subsystems[0])
+    #Buoyancy field
+    b = solver.state[1]
+    b.change_scales(1)
+    #Phases
+    pi=np.pi
+    phase=0
+    phaser=np.exp(((1j*phase)*(2*pi))/4)
+    #Modes
+    arr_x = np.linspace(0,Lx,Nx)
+    mode=np.exp(1j*kx*arr_x)
+    b_mode=(np.outer(b['g'],mode)*phaser).real
+    return b_mode
+
+def growthratescurve(ra_list,Prandtl,Nz, ad, sig,Lz):
+    if rank == 0: 
+        print('\n')
+        print('###########')
+        print('Conditions')
+        print('Lowest Ra: ',str(min(ra_list)))
+        print('Upper Ra: ',str(max(ra_list)))
+        print('Pr: ',str(Prandtl))
+        print('Sigma: ',str(sig))
+        print('Adiabat: ',str(ad))
+        print('Z Resolution: ',str(Nz))
+        print('###########')
+        print('\n')
+    guessrates_solve = []
+    for index, i in enumerate(ra_list):
+        ratelist = getgrowthrates(ra_list[index], Prandtl,Nz, ad, sig,Lz)
+        maxomeg = max(ratelist)
+        if rank == 0:
+            print('Kx: ',kx_global[np.argmax(ratelist)])
+            print('Kx index: ', np.argmax(ratelist))
+            print('Index=',str(index+1))
+            runsleft = (len(ra_list)+1)-(index+1)
+            print('Runs left',runsleft)
+            print('Rayleigh: ',str(ra_list[index]))
+            print('Maximum eigenval:',maxomeg)
+        guessrates_solve.append(maxomeg)
+    if rank == 0:
+        print('#########')
+        print('Eigenvals:\n',guessrates_solve)
+        print('#########')
+    label=r'$\sigma$:'+'{}'.format(sig)+','+'Nz={}'.format(Nz)
+    from random import randint
+    r = randint(0, 255)
+    g = randint(0, 255)
+    b = randint(0, 255)
+    color = [r, g, b]
+    plt.scatter(ra_list,guessrates_solve,label=label)
+    plt.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
+    plt.xscale('log')
+    plt.xlabel(r'\text{Ra}')
+    plt.ylabel(r'Im($\omega$)')
+    plt.title(r'$\nabla_{ad}$='+'{}'.format(ad))
+    return 
+bound_upper=20
+bound_lower=4
 step_factor=1
-ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
-sig_list=[0.1]
-marginalRa = []
-raorigin = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sig,Lz)[0]
-marginalRa.append(raorigin)
-for i in range(len(ad_list)):
-    if not (ad_list[i] == ad_list[0]):
+powers = np.linspace(bound_lower,bound_upper,step_factor*abs(bound_upper-bound_lower)+2)
+testlist = []
+for power in powers:
+    testlist.append(10**power)
+
+nz_upper=7
+nz_lower=7
+step_nz=1
+nz_powers = np.linspace(nz_lower,nz_upper,step_nz*abs(nz_upper-nz_lower)+1)
+nzlist=[]
+for power in nz_powers:
+    nzlist.append(2**power)
+sig_list = [0.1]
+if rank == 0:
+    print('Sigmas: ',sig_list)
+for Nz in nzlist:
+    for sig in sig_list:
         if rank == 0:
-            print('rank:',rank)
-            print('###')
-        margsolve = findmarginalomega(marginalRa[i-1],Prandtl,ad_list[0],Nz,sig,Lz)
-        margRa = margsolve[0]
-        margkx = margsolve[2]
-        #corresponding wavenumber
-        if rank == 0:
-            print('Ra:',Rayleigh)
-            print('Ad:',ad_list[i])
-            print('###')
-        marginalRa.append(margRa)
-print(ad_list)
-print(marginalRa)
-plt.scatter(ad_list,marginalRa)
-fulldir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'
-if not os.path.exists(fulldir):
-    os.makedirs(fulldir)
+            print('Running sigma: ',sig)
+        growthratescurve(testlist,Prandtl,Nz,ad,sig,Lz)
+full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
+if not os.path.exists(full_dir):
+    os.makedirs(full_dir)
+bckup_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
+if not os.path.exists(bckup_dir):
+    os.makedirs(bckup_dir)
 plt.tight_layout()
-plt.savefig(fulldir+'ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global)+1)+'_marginalstabilitycurve.png') 
+plt.savefig(bckup_dir+'ad{}'.format(ad)+'sigs{}'.format(sig_list)+'Nz{}'.format(nzlist)+'kx{}'.format(len(kx_global)+1)+'_ranumsvsmean_eig.png') 
+plt.savefig(full_dir+'ad{}'.format(ad)+'sigs{}'.format(sig_list)+'Nz{}'.format(nzlist)+'kx{}'.format(len(kx_global)+1)+'_ranumsvsmean_eig.png')
 plt.close()
+sys.exit()
+
+#Plotting
+# Bases
+zcoord = d3.Coordinate('z')
+dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
+zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, Lz))
+z = dist.local_grid(zbasis)
+arr_x = np.linspace(0,Lx,Nx)
+aspectratio = 0
+fig, ([ax1, ax2,],[ax3,ax4]) = plt.subplots(2, 2)
+fig.tight_layout()
+
+#Top left corner
+ax1.set_aspect('equal')
+ax1.set_adjustable('box', share=True)
+ax1.set_ylabel('Ra='+str(Rayleigh))
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz, NEV, target)
+#Mode paramaters
+if rank == 0:
+    A = margsoln[3]
+    kx = margsoln[2]
+    soln = modewrapper(Rayleigh, Prandtl, kx, Nx,Nz, ad, sig,Lx,Lz,NEV, target)
+    c = ax1.pcolormesh(arr_x,z-2*(z[..., np.newaxis]-1/2),soln, cmap='RdBu') 
+    fig.colorbar(c, ax=ax1)
+
+#Top right corner
+ax = axs[0, 1]
+Rayleigh=1e3
+sig=0.003
+ax2.set_aspect('equal')
+ax2.set_adjustable('box', share=True)
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+#Mode paramaters
+A = margsoln[3]
+kx =margsoln[2]
+if rank == 0:
+    soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,Nx,NEV=10, target=0) 
+c = ax2.pcolormesh(arr_x,z,soln,cmap='RdBu')
+fig.colorbar(c, ax=ax2)
+
+# #Bottom left corner
+Rayleigh=10
+sig=sig_og
+ax3.set_xlabel(r'$\sigma$='+str(sig))
+ax3.set_aspect('equal')
+ax3.set_adjustable('box', share=True)
+ax3.set_ylabel('Ra='+str(Rayleigh))
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+#Mode paramaters
+A = margsoln[3]
+kx = margsoln[2]
+if rank == 0:
+    soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,Nx,NEV=10, target=0) 
+c = ax3.pcolormesh(arr_x,z,soln,cmap='RdBu')
+fig.colorbar(c, ax=ax3)
+
+#Bottom right corner
+# ax = axs[1, 1]
+Rayleigh=10
+sig=0.003
+ax4.set_aspect('equal')
+ax4.set_adjustable('box', share=True)
+ax4.set_xlabel(r'$\sigma$='+str(sig))
+margsoln=findmarginalomega(Rayleigh, Prandtl, Nz, A, ad,sig)
+#Mode paramaters
+A = margsoln[3]
+kx = margsoln[2]
+if rank == 0:
+    soln = modewrapper(Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,Nx,NEV=10, target=0) 
+c = ax4.pcolormesh(arr_x,z,soln,cmap='RdBu')
+fig.colorbar(c, ax=ax4)
+
+if rank == 0:
+    ra1 = 1e3
+    ra2 = 0
+    sig1 = 0.01
+    sig2 = 0.008
+    full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'Ra1{}'.format(ra1)+'Ra2{}'.format(ra2)+'_modeplots/'
+    full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'
+    if not os.path.exists(full_dir):
+        os.makedirs(full_dir)
+    figpath=full_dir+'Sig1={}'.format(sig1)+'Sig2={}'.format(sig2)+'_multimode.png'
+    figpath=full_dir+name+'testing_multimode.png'
+    plt.savefig(figpath)
+    if rank == 0:
+        print(figpath)
+    plt.close()

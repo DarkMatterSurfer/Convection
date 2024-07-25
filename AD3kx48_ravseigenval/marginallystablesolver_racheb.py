@@ -297,32 +297,44 @@ def growthratescurve(ra_list,Prandtl,Nz, ad, sig,Lz):
     plt.xscale('log')
     plt.xlabel('Rayleigh Number')
     plt.ylabel(r'Growth Guess ($\omega_{guess}$)')
-    plt.title(r'$\nabla_{ad}$='+'{}'.format(ad))
+    plt.title(r'$\nabla_{ad}$='+'{}'.format(ad)+r'$k_{x}$'+'{}'.format(len(kx_global)+1))
     return 
 bound_upper=20
 bound_lower=4
-step_factor=1
+step_factor=2
 powers = np.linspace(bound_lower,bound_upper,step_factor*abs(bound_upper-bound_lower)+2)
 testlist = []
 for power in powers:
     testlist.append(10**power)
+
+nz_upper=7
+nz_lower=6
+step_nz=2
+nz_powers = np.linspace(nz_lower,nz_upper,step_nz*abs(bound_upper-bound_lower))
+nzlist=[]
+for power in nz_powers:
+    nzlist.append(2**power)
+
 sig_list = [0.1,0.01,0.001]
 if rank == 0:
     print('Sigmas: ',sig_list)
-for sig in sig_list:
-    if rank == 0:
-        print('Running sigma: ',sig)
-    growthratescurve(testlist,Prandtl,Nz,ad,sig,Lz)
+for Nz in nzlist:
+    for sig in sig_list:
+        if rank == 0:
+            print('Running sigma: ',sig)
+        growthratescurve(testlist,Prandtl,Nz,ad,sig,Lz)
 full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(full_dir):
     os.makedirs(full_dir)
 bckup_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(bckup_dir):
     os.makedirs(bckup_dir)
-plt.savefig(bckup_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx48_ranumsvsmean_eig.png') 
-plt.savefig(full_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx48_ranumsvsmean_eig.png')
+plt.savefig(bckup_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global)+1)+'_ranumsvsmean_eig.png') 
+plt.savefig(full_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global)+1)+'_ranumsvsmean_eig.png')
 plt.close()
 sys.exit()
+
+#Plotting
 # Bases
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
