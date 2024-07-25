@@ -58,7 +58,7 @@ epsilon = config.getfloat('param','epsilon')
 tol = config.getfloat('param','tol')
 name = config.get('param', 'name')
 
-def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
+def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz):
 
     # Bases
     coords = d3.CartesianCoordinates('x', 'z')
@@ -306,6 +306,7 @@ def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
             maxomeg_kx = wavenum_list[i]
             if rank == 0: 
                 print('Dominant mode wavenumber',maxomeg_kx)
+    
     #Writing conditions for marginal stability -> IN .CSV FILE
     if rank == 0:
         full_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'AD{}'.format(ad)+'sig{}'.format(sig)+'/Rayleigh{}/'.format(Rayleigh)+'/'

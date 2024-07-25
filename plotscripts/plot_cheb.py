@@ -82,8 +82,8 @@ def main(filename, start, count, output):
                 ax.set_aspect('equal')
                 ax.set_adjustable('box', share=True)
                 #sigma lines
-                ax.axhline(0.5+sig,linestyle='--',color='k',lw=0.3)
-                ax.axhline(0.5-sig,linestyle='--',color='k',lw=0.3)
+                ax.axhline(0.5+sig,linestyle='--',color='k',lw=0.45)
+                ax.axhline(0.5-sig,linestyle='--',color='k',lw=0.45)
                 c = ax.pcolor(xpop,zglob,globtask[index, ...].T, cmap='RdBu') #buoyancy
                 ax.set_title(titlelist[n],pad=50)
                 fig.colorbar(c, ax=ax,location='top',orientation='horizontal')

@@ -319,8 +319,8 @@ if not os.path.exists(full_dir):
 bckup_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(bckup_dir):
     os.makedirs(bckup_dir)
-plt.savefig(bckup_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global)+1)+'_ranumsvsmean_eig.png') 
-plt.savefig(full_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global)+1)+'_ranumsvsmean_eig.png')
+plt.savefig(bckup_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx48_ranumsvsmean_eig.png') 
+plt.savefig(full_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx48_ranumsvsmean_eig.png')
 plt.close()
 sys.exit()
 

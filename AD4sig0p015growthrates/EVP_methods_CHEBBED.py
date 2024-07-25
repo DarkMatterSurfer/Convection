@@ -214,8 +214,9 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
     # except:
     if rank == 0:
         print('trying dense solve')
-    # solver.solve_sparse(sp,N=NEV,target=target)
-    solver.solve_dense(sp)    
+    solver.solve_dense(sp)
+    
+    print('rank', str(rank))
     return solver
 def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     # Create coordinates and bases

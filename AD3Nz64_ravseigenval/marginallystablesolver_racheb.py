@@ -319,47 +319,10 @@ if not os.path.exists(full_dir):
 bckup_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(bckup_dir):
     os.makedirs(bckup_dir)
-plt.savefig(bckup_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global)+1)+'_ranumsvsmean_eig.png') 
-plt.savefig(full_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global)+1)+'_ranumsvsmean_eig.png')
+plt.savefig(bckup_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx48_ranumsvsmean_eig.png') 
+plt.savefig(full_dir+'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kx48_ranumsvsmean_eig.png')
 plt.close()
 sys.exit()
-
-if rank == 0:
-    adiabatresolutionchecker(ad,sig,Nz,Lz,path)
-#Plotting
-ad_list = np.linspace(1,9,9)
-if rank == 0:
-    print(ad_list)
-marginalRalist = []
-ra_1 = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sig,Lz)[0]
-marginalRalist.append(ra_1)
-ra_2 = findmarginalomega(marginalRalist[0], Prandtl,Nz, ad_list[1], sig,Lz)[0]
-marginalRalist.append(ra_2)
-ra_3 = findmarginalomega(marginalRalist[1], Prandtl,Nz, ad_list[2], sig,Lz)[0]
-marginalRalist.append(ra_3)
-ra_4 = findmarginalomega(marginalRalist[2], Prandtl,Nz, ad_list[3], sig,Lz)[0]
-marginalRalist.append(ra_4)
-ra_5 = findmarginalomega(marginalRalist[3], Prandtl,Nz, ad_list[4], sig,Lz)[0]
-marginalRalist.append(ra_5)
-ra_6 = findmarginalomega(marginalRalist[4], Prandtl,Nz, ad_list[5], sig,Lz)[0]
-marginalRalist.append(ra_6)
-ra_7 = findmarginalomega(marginalRalist[5], Prandtl,Nz, ad_list[6], sig,Lz)[0]
-marginalRalist.append(ra_7)
-ra_8 = findmarginalomega(marginalRalist[6], Prandtl,Nz, ad_list[7], sig,Lz)[0]
-marginalRalist.append(ra_8)
-ra_9 = findmarginalomega(marginalRalist[7], Prandtl,Nz, ad_list[8], sig,Lz)[0]
-marginalRalist.append(ra_9)
-print(ad_list)
-print(marginalRalist)
-findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz)
-raorigin = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sig,Lz)[0]
-marginalRalist.append(raorigin)
-for i in range(len(ad_list)):
-    #if on second adiabat entry
-    if not (ad_list[i] == ad_list[0]):
-        print(marginalRalist[i-1])
-        margRa = findmarginalomega(marginalRalist[i-1],Prandtl,ad_list[i],Nz,sig,Lz)[0]
-        marginalRalist.append(margRa)
 # Bases
 zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128, comm=MPI.COMM_SELF)
