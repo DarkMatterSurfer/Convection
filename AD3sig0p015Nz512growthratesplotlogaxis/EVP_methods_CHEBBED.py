@@ -107,11 +107,8 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
     # Bases
     coords = d3.CartesianCoordinates('x', 'z')
     dist = d3.Distributor(coords, dtype=np.complex128, comm=MPI.COMM_SELF)
-    try: 
-        zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
-        zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
-    except Exception as e:
-        print(e)
+    zbasis_r  =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(Lz/2, Lz), dealias=3/2)
+    zbasis_c =  d3.ChebyshevT(coords['z'], size=round(Nz/2), bounds=(0, Lz/2), dealias=3/2)
     # Fields
     omega = dist.Field(name='omega')
     tau_p = dist.Field(name='tau_p')
@@ -207,15 +204,16 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
     
     solver = problem.build_solver()
     sp = solver.subproblems[0]
-    # try:
-    #     if rank == 0:
-    #         print('3 here. trying sparse')
-    #     solver.solve_sparse(sp,NEV,target=target,raise_on_mismatch=True)
-    # except:
-    if rank == 0:
-        print('trying dense solve')
-    # solver.solve_sparse(sp,N=NEV,target=target)
-    solver.solve_dense(sp)    
+    try:
+        if rank == 0:
+            print('3 here. trying sparse')
+        solver.solve_sparse(sp,NEV,target=target,raise_on_mismatch=True)
+    except:
+        if rank == 0:
+            print('sparse solve failed task trying dense solve')
+        solver.solve_dense(sp)
+    
+    print('rank', str(rank))
     return solver
 def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     # Create coordinates and bases

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 comm = MPI.COMM_WORLD
 import os
 import sys
-from EVP_methods_CHEBBED import modesolver
+from Convection.no_compoundingEVP.EVP_methods import modesolver
 path = os.path.dirname(os.path.abspath(__file__))
 if len(sys.argv) < 2:
     # raise
@@ -27,17 +27,17 @@ Nz = config.getfloat('param', 'Nz')
 Nx = config.getfloat('param','Nx')
 Rayleigh = config.getfloat('param', 'Ra') 
 Prandtl = config.getfloat('param', 'Pr')
-Lx = config.getfloat('param','Lx')
+L_x = config.getfloat('param','Lx')
 Lz = config.getfloat('param','Lz')
 pi=np.pi
 kx = config.getfloat('param','kx')
 kx_global = eval(config.get('param','kx_global'))
 wavenum_list = []
 NEV = config.getint('param','NEV')
-target = config.getint('param','target')
-ad = config.getfloat('param','back_ad')
+A = config.getfloat('param','A')
 sig = sig_og = config.getfloat('param','sig')
-solver = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target)
+ad = config.getfloat('param', 'adiabat_mean')  
+solver = modesolver (Rayleigh, Prandtl, kx, Nz, A, ad, sig,Lz,NEV=10, target=0)
 name=config.get('param','name')
 
 # Bases
@@ -45,8 +45,7 @@ zcoord = d3.Coordinate('z')
 dist = d3.Distributor(zcoord, dtype=np.complex128)
 zbasis = d3.ChebyshevT(zcoord, size=Nz, bounds=(0, Lz))
 z = dist.local_grid(zbasis)
-z_match = Lz/2
-arr_x = np.linspace(0,Lx,Nx)
+arr_x = np.linspace(0,L_x,Nx)
 mode=np.exp(1j*kx*arr_x)
 sp = solver.subproblems[0]
 evals = solver.eigenvalues[np.isfinite(solver.eigenvalues)]
@@ -79,8 +78,8 @@ modeslist = [b_mode,ux_mode,uz_mode]
 full_dir = path+"/"+name +'/'
 if not os.path.exists(full_dir):
     os.makedirs(full_dir)
-np.save(full_dir+'/'+name+'modedata.npy', np.array(modeslist, dtype=object),allow_pickle=True)
-sys.exit()
+np.save(full_dir+'modedata.npy', np.array(modeslist, dtype=object),allow_pickle=True)
+# sys.exit()
 fig, axs = plt.subplots(2, 2)
 ax = axs[0, 0]
 ax.set_aspect('equal')
@@ -109,16 +108,13 @@ c = ax.pcolor(arr_x,z,uz_mode, cmap='autumn') #uz
 ax.set_title(r'$\text{u}_z$')
 fig.colorbar(c, ax=ax)
 
-folderstring= "AD{}".format(ad)+"sig{}".format(sig)
-full_dir = "/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/"+folderstring+"/modeplots/"
+folderstring= "Ra"+str(Rayleigh)+"Pr"+str(Prandtl)
+full_dir = path+"/eigenvalprob_plots/"+folderstring
 if not os.path.exists(full_dir):
     os.makedirs(full_dir)
-plt.savefig(full_dir+"rbcheatmodeplot"+folderstring+".png")
-full_dir = "/home/iiw7750/Convection/"+name 
-full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'AD{}'.format(ad)+'sig{}'.format(sig)+'/Rayleigh{}/'.format(Rayleigh)+'/'
-if not os.path.exists(full_dir):
-    os.makedirs(full_dir)
-plt.savefig(full_dir+"rbcheatmodeplot"+folderstring+".png")
+plt.savefig(full_dir+"/"+name+"rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
+full_dir = path+"/"+name 
+plt.savefig(full_dir+"/rbcheatmodeplotRa"+str(Rayleigh)+'Pr'+str(Prandtl)+'Kx'+str(kx)+".png")
 plt.close()
 
 #Eigenmodes plot

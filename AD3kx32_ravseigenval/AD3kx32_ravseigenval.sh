@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --account=b1094
 #SBATCH --partition=ciera-std
-#SBATCH --time=2:00:00
-#SBATCH --mem=64G
-#SBATCH --nodes=1
+#SBATCH --time=4 :00:00
+#SBATCH --mem=128G
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=32
 #SBATCH --job-name=${0##*/}
 

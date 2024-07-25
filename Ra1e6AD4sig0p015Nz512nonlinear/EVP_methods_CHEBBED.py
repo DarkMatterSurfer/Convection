@@ -207,15 +207,16 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target):
     
     solver = problem.build_solver()
     sp = solver.subproblems[0]
-    # try:
-    #     if rank == 0:
-    #         print('3 here. trying sparse')
-    #     solver.solve_sparse(sp,NEV,target=target,raise_on_mismatch=True)
-    # except:
-    if rank == 0:
-        print('trying dense solve')
-    # solver.solve_sparse(sp,N=NEV,target=target)
-    solver.solve_dense(sp)    
+    try:
+        if rank == 0:
+            print('3 here. trying sparse')
+        solver.solve_sparse(sp,NEV,target=target,raise_on_mismatch=True)
+    except:
+        if rank == 0:
+            print('sparse solve failed task trying dense solve')
+        solver.solve_dense(sp)
+    
+    print('rank', str(rank))
     return solver
 def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     # Create coordinates and bases

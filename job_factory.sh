@@ -1,7 +1,7 @@
 #!/bin/bash
 config=options.cfg
 template=jobs.sh
-EVPsolver=EVP_methods.py
+solverEVP=EVP_methods_CHEBBED.py
 source $config
 if [ -d "$name" ]; then 
     echo "DIRECTORY $name ALREADY EXISTS!"
@@ -10,8 +10,9 @@ if [ -d "$name" ]; then
     rm -rf $name
 fi
 mkdir $name
-cp $EVPsolver $name
+# cp $EVPsolver $name
 cp $config $name
+cp $solverEVP $name
 cp $solver $name
 cp $template $name/$name.sh
 cd $name 

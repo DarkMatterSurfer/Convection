@@ -138,20 +138,6 @@ problem.add_equation("u_r(z=Lz) = 0")
 problem.add_equation("T_r(z=Lz) = -1")
 problem.add_equation("u_c(z=0) = 0")
 problem.add_equation("T_c(z=0) = 1")
-#Bouyancy flucuations
-delta=config.getfloat('param','delta')
-    #Moving senors
-sensor1 = 1/2*(Lz)-(2)*(sig)-delta#change with sig
-sensor2 = 1/2*(Lz)-(2)*(sig)-2*delta#change with sig
-sensor3 = 1/2*(Lz)-(2)*(sig)-3*delta#change with sig
-    #Fixed 1
-fixedsensor1 = 1/4 + delta
-fixedsensor2 = 1/4
-fixedsensor3 = 1/4 - delta 
-    #Fixed 2
-fixedsensor4 = delta
-fixedsensor5 = 2*delta
-fixedsensor6 = 3*delta
 
 # Build solver
 solver = problem.build_solver(d3.RK222)
@@ -168,17 +154,21 @@ T_r['g'] *= z_r * (Lz - z_r) # Damp noise at walls
 T_r['g'] += Lz - 2*z_r # Add linear background
 T_c['g'] *= z_c * (Lz - z_c) # Damp noise at walls
 T_c['g'] += Lz - 2*z_c # Add linear background
-
+# z_i = 0.5
+# del_z = 0.02
+# T_r['g'] *= (z_r*(Lz-z_r)) * 0.5*(1 - np.tanh( (z_r - 0.4)/del_z ))
+# T_c['g'] *= (z_c*(Lz-z_c)) * 0.5*(1 - np.tanh( (z_c - 0.4)/del_z ))
+# T_func = lambda z: del_z*np.log(np.cosh( (z-z_i)/del_z ))
+# T_r['g'] += -1*(z_r - T_func(z_r) - 1 + T_func(0) ) + T_top*(z_r + T_func(z_r) - T_func(0))
+# T_c['g'] += -1*(z_c - T_func(z_c) - 1 + T_func(0) ) + T_top*(z_c + T_func(z_c) - T_func(0))
 
 # Initial timestep
 dt = 1e-3
 
 # Flow properties
 flow = d3.GlobalFlowProperty(solver, cadence=10)
-Reynolds_c = np.sqrt(u_c@u_c) / nu
-Reynolds_r = np.sqrt(u_r@u_r) / nu
-flow.add_property(Reynolds_c, name='Re')
-flow.add_property(Reynolds_r, name='Re')
+Reynolds_num = np.sqrt(u_c@u_c) / nu
+flow.add_property(Reynolds_num, name='Re')
 
 #Checkpoints 
 # checkpoints = solver.evaluator.add_file_handler(name+'/checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
@@ -201,20 +191,8 @@ snapshots.add_task(vort_c, name='vorticity_c')
     #Reynolds number
 # profiles = solver.evaluator.add_file_handler(name+'/profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
 profiles = solver.evaluator.add_file_handler(path+'/profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
-profiles.add_task(integx(Reynolds_r), name = "reynolds_r")
-profiles.add_task(integx(Reynolds_c), name = "reynolds_c")
-    #Enstrophy
-profiles.add_task(integx(vort_r**2), name = 'entrsophy_r')
-profiles.add_task(integx(vort_c**2), name = 'entrsophy_c')
-profiles.add_task(T_c(x=0,z=sensor1),name='b_1sig')
-profiles.add_task(T_c(x=0,z=sensor2),name='b_2sig')
-profiles.add_task(T_c(x=0,z=sensor3),name='b_3sig')
-profiles.add_task(T_c(x=0,z=fixedsensor1),name='b_1fixed')
-profiles.add_task(T_c(x=0,z=fixedsensor2),name='b_2fixed')
-profiles.add_task(T_c(x=0,z=fixedsensor3),name='b_3fixed')
-profiles.add_task(T_c(x=0,z=fixedsensor4),name='b_4fixed')
-profiles.add_task(T_c(x=0,z=fixedsensor5),name='b_5fixed')
-profiles.add_task(T_c(x=0,z=fixedsensor6),name='b_6fixed')
+profiles.add_task(integx(Reynolds_num), name = "reynolds")
+
 #CFL
 CFL = d3.CFL(solver, initial_dt=dt, cadence=3, safety=0.35, max_dt=maxtimestep, threshold=0.05)
 CFL.add_velocity(u_r)

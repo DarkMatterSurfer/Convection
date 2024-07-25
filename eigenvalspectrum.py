@@ -5,7 +5,8 @@ import logging
 import sys
 import mpi4py
 from mpi4py import MPI
-from EVP_methods import geteigenval 
+from EVP_methods_CHEBBED import modesolver
+import os
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 path = os.path.dirname(os.path.abspath(__file__))
@@ -29,20 +30,31 @@ import matplotlib.pyplot as plt
 comm = MPI.COMM_WORLD
 
 # Parameters
-Nz = config.getfloat('param', 'Nz')
-Nx = config.getfloat('param','Nx')
+# Parameters
+Nz = config.getint('param', 'Nz')
+Nx = config.getint('param','Nx')
 Rayleigh = config.getfloat('param', 'Ra') 
 Prandtl = config.getfloat('param', 'Pr')
-L_x = config.getfloat('param','Lx')
+Re_arg = config.getfloat('param','Re')
 Lz = config.getfloat('param','Lz')
+L_x = config.getfloat('param','Lx')
 pi=np.pi
-kx_global = eval(config.get('param','kx_global'))
+kx_global=eval(config.get('param','kx_global'))
 wavenum_list = []
-NEV = config.getint('param','NEV')
-A = config.getfloat('param','A')
+for i in kx_global:
+    wavenum_list.append(i)
+maxomeg_kx = 0
+if rank == 0:
+    print('Wavenumbers :',wavenum_list)
+NEV = 1
 sig = sig_og = config.getfloat('param','sig')
-ad = config.getfloat('param', 'adiabat_mean')  
-def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=NEV, target=0):
+ad = config.getfloat('param','back_ad') 
+# print(ad)
+#Search parameters
+epsilon = config.getfloat('param','epsilon')
+tol = config.getfloat('param','tol')
+name = config.get('param', 'name')
+def getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,Lx,Lz,NEV=10,target=0):
     # Compute growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
     t1 = time.time()
@@ -50,16 +62,17 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=NEV, target=0):
     growth_locallist = []
     frequecny_locallist = []
     for kx in kx_local:
-        eigenvals = geteigenval(Rayleigh, Prandtl, kx, Nz,A,ad,sig,Lz=Lz, NEV=NEV) #np.array of complex
+        print(kx)
+        eigenvals = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,NEV, target).eigenvalues #np.array of complex
         eigenlen = len(eigenvals)
         gr_max = -1*np.inf
         max_index = -1
         for i in range(eigenlen):
-            if -1*(eigenvals[i].real) > gr_max:
-                gr_max=-1*(eigenvals[i].real)
+            if (eigenvals[i].imag) > gr_max:
+                gr_max=(eigenvals[i].imag)
                 max_index = i
-        eigenvals[max_index].imag
-        freq = eigenvals[max_index].imag
+        # eigenvals[max_index].imag
+        freq = eigenvals[max_index].real
         growth_locallist.append(gr_max)
         frequecny_locallist.append(freq)
     #    growth_locallist.append(np.max())
@@ -85,7 +98,9 @@ def getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=NEV, target=0):
     results=(growth_global,freq_global)
     return results
 # Plot growth rates from root process
-growth_global, freq_global = getgrowthrates(Rayleigh, Prandtl,Nz, A, ad,sig, NEV=NEV, target=0)
+growth_global, freq_global = getgrowthrates(Rayleigh, Prandtl, Nx,Nz, ad, sig,L_x,Lz)
+print(growth_global)
+sys.exit()
 if comm.rank == 0:
     #Plotting Set-up
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11,9), sharex=True, dpi = 500)
@@ -94,8 +109,8 @@ if comm.rank == 0:
     ax2.set_ylabel(r'$\text{f}$')
     # ax1.set_ylim(bottom=0)
     ax2.set_xlabel(r'$k_x$')
-    ax1.title.set_text(r'Rayleigh-Benard Modes Growth Rates ($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f, \; \mathrm{A} = %.2f $)' %(Rayleigh, Prandtl,ad,A))
-    ax2.title.set_text(r'Rayleigh-Benard Modes Frequency($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f, \; \mathrm{A} = %.2f $)' %(Rayleigh, Prandtl,ad,A))
+    ax1.title.set_text(r'Rayleigh-Benard Modes Growth Rates ($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f$)' %(Rayleigh, Prandtl,ad))
+    ax2.title.set_text(r'Rayleigh-Benard Modes Frequency($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f$)' %(Rayleigh, Prandtl,ad))
 
     #Growth Rates
     ax1.scatter(kx_global, growth_global)
@@ -106,7 +121,8 @@ if comm.rank == 0:
     plt.tight_layout()
 
     #Figure Saving
-    filename = 'Ad_'+str(ad)+'Amp_'+str(A)+'_eigenval_plot.png'
-    plt.savefig("/home/Convection/eigenvalprob_plots/"+"Ra"+str(Rayleigh)+"Pr"+str(Prandtl)+"/"+filename)
+    filename = 'Ad_'+str(ad)+'_eigenval_plot.png'
+    print("/home/Convection/eigenvalprob_plots/"+"Ra"+str(Rayleigh)+"Pr"+str(Prandtl)+"/"+filename)
+    plt.savefig("/home/iiw7750/Convection/eigenvalprob_plots/"+"Ra"+str(Rayleigh)+"Pr"+str(Prandtl)+"/"+filename)
     print(filename)
     plt.close()
