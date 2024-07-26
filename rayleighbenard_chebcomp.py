@@ -189,7 +189,7 @@ checkpoints.add_tasks(solver.state, layout='g')
 calib_r['g']=z_r*x
 calib_c['g']=z_c*x
 # snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
-snapshots = solver.evaluator.add_file_handler(path+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
+snapshots = solver.evaluator.add_file_handler(path+'/'+name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
 snapshots.add_task(T_r, name='buoyancy_r')
 snapshots.add_task(T_c, name='buoyancy_c')
 vort_r=-d3.div(d3.skew(u_r))
@@ -200,7 +200,7 @@ snapshots.add_task(vort_c, name='vorticity_c')
 #Profiles
     #Reynolds number
 # profiles = solver.evaluator.add_file_handler(name+'/profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
-profiles = solver.evaluator.add_file_handler(path+'/profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
+profiles = solver.evaluator.add_file_handler(path+'/'+name+'/profiles', sim_dt=0.0200, max_writes=500, mode = 'overwrite')
 profiles.add_task(integx(Reynolds_r), name = "reynolds_r")
 profiles.add_task(integx(Reynolds_c), name = "reynolds_c")
     #Enstrophy

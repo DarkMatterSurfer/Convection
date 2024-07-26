@@ -353,9 +353,17 @@ ad_lower=1
 step_factor=1
 ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
 sig_list=[0.1]
+margorigin = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sig,Lz)
 marginalRa = []
-raorigin = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sig,Lz)[0]
+marginalkx = []
+raorigin = margorigin[0]
+kxorigin = margorigin[2]
 marginalRa.append(raorigin)
+marginalkx.append(kxorigin)
+if rank == 0:
+    print('Origin Rayleigh:',marginalRa)
+    print('Origin (ad~1) kx:',marginalkx)
+sys.exit()
 for i in range(len(ad_list)):
     if not (ad_list[i] == ad_list[0]):
         margsolve = findmarginalomega(marginalRa[i-1],Prandtl,ad_list[0],Nz,sig,Lz)
@@ -364,13 +372,15 @@ for i in range(len(ad_list)):
         #corresponding wavenumber
         if rank == 0:
             print('###')
-            print('Ra:',margRa)
             print('Ad:',ad_list[i])
+            print('Ra:',margRa)
             print('kx:',margkx)
             print('###')
         marginalRa.append(margRa)
-print(ad_list)
-print(marginalRa)
+if rank == 0:
+    print(ad_list)
+    print(marginalRa)
+
 plt.scatter(ad_list,marginalRa)
 fulldir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'
 if not os.path.exists(fulldir):
