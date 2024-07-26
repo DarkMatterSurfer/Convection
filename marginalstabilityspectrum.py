@@ -358,16 +358,15 @@ raorigin = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sig,Lz)[0]
 marginalRa.append(raorigin)
 for i in range(len(ad_list)):
     if not (ad_list[i] == ad_list[0]):
-        if rank == 0:
-            print('rank:',rank)
-            print('###')
         margsolve = findmarginalomega(marginalRa[i-1],Prandtl,ad_list[0],Nz,sig,Lz)
         margRa = margsolve[0]
         margkx = margsolve[2]
         #corresponding wavenumber
         if rank == 0:
-            print('Ra:',Rayleigh)
+            print('###')
+            print('Ra:',margRa)
             print('Ad:',ad_list[i])
+            print('kx:',margkx)
             print('###')
         marginalRa.append(margRa)
 print(ad_list)
