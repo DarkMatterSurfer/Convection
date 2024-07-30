@@ -352,20 +352,22 @@ def findmarginalomega(Rayleigh, Prandtl,Nz, ad, sig,Lz):
         comm.barrier()
     return results
 
-ad_upper=10
+ad_upper=4
 ad_lower=1
-step_factor=3
+step_factor=1
 ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
 sig_list=[0.01,0.001]
 fig, (margRa_ax,margKx_ax) = plt.subplots(2, 1,sharex='row')
-fig.suptitle('Marginal Stability Curve')
+fig.suptitle('Marginal Stability Curves')
 for sigma in sig_list:
     if rank == 0:
         print('finding origin Ra, kx')
     margorigin = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sigma,Lz)
     marginalRa = []
+    marginal_sigRa = []
     marginalkx = []
     raorigin = margorigin[0]
+    sig_raorgin = (raorigin*(2*sig**3))/(Lz)
     kxorigin = margorigin[2]
     marginalRa.append(raorigin)
     marginalkx.append(kxorigin)
@@ -385,17 +387,21 @@ for sigma in sig_list:
         if not (ad_list[i] == ad_list[0]):
             margsolve = findmarginalomega(marginalRa[i-1],Prandtl,Nz,ad_list[i],sigma,Lz)
             margRa = margsolve[0]
+            marg_sigRa = (margRa*(2*sig**3))/(Lz)
             margkx = margsolve[2]
             #Populating lists for marginal Ra and kx
             marginalRa.append(margRa)
+            marginal_sigRa.append(marg_sigRa)
             marginalkx.append(margkx)
             if rank == 0:
                 print('\n\n'+'#############')
                 print('##########')
                 print('Ad:',ad_list[i])
                 print('Ra:',margRa)
+                print('Rescaled Ra:',marg_sigRa)
                 print('kx:',margkx)
                 print('Marginal ra list:',marginalRa)
+                print('Marginal rescaled ra list:',marginal_sigRa)
                 print('Marginal kx list:',marginalkx)
                 print('##########')
                 print('#############'+'\n\n')
@@ -403,6 +409,7 @@ for sigma in sig_list:
     margRa_ax.set_ylabel(r'$Ra_{marginal}$')
     margRa_ax.set_yscale('log')
     margRa_ax.scatter(ad_list,marginalRa,label=r'$\sigma$'+'={}'.format(sigma))
+    margRa_ax.scatter(ad_list,marginalRa,label='Rescale '+r'$\sigma$'+'={}'.format(sigma))
     margRa_ax.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
 
     margKx_ax.set_title('Marginal Kx',fontsize='x-small')
