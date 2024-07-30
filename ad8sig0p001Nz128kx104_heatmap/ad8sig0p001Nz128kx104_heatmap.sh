@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --account=b1094
 #SBATCH --partition=ciera-std
-#SBATCH --time=48:00:00
+#SBATCH --time=20:00:00
 #SBATCH --mem=156G
-#SBATCH --nodes=3
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=52
 #SBATCH --job-name=${0##*/}
 
@@ -15,8 +15,7 @@ if [ -f /projects/b1094/software/dotfiles/.bashrc ]; then
 fi
 dedalus3
 mpirun -n $nprocs python3 $solver $config
-mpirun -n $nprocs python3 ~/Convection/plotscripts/plot_cheb.py $config
-mpirun -n $nprocs python3 ~/Convection/plotscripts/plotscalarmeasurement.py $config
-png2mp4 ${name}/frames/ ${name}/movie.mp4 120
-echo ${name}/movie.mp4
-code ${name}/movie.mp4
+# mpirun -n $nprocs python3 ~/Convection/plotscripts/plot_cheb.py $config
+# png2mp4 ${name}/frames/ ${name}/movie.mp4 120
+# echo ${name}/movie.mp4
+# code ${name}/movie.mp4

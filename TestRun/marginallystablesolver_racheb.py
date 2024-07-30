@@ -346,17 +346,16 @@ testlist = []
 for power in powers:
     testlist.append(10**power)
 growthratescurve(testlist,Prandtl,Nz,ad,sig,Lz)
-
 full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(full_dir):
     os.makedirs(full_dir)
 bckup_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(bckup_dir):
     os.makedirs(bckup_dir)
-plt.savefig(bckup_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eigheatmap.png') 
-print_rank('\nFigure path:\n'+bckup_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eigheatmap.png')
-plt.savefig(full_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eigheatmap.png')
-# plt.savefig(path+'/'+name+'/'+name+'_testrunfig.png')
+# plt.savefig(bckup_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eig.png') 
+# print_rank(bckup_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eig.png')
+# plt.savefig(full_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eig.png')
+plt.savefig(path+'/'+name+'/'+name+'_testrunfig.png')
 plt.close()
 sys.exit()
 

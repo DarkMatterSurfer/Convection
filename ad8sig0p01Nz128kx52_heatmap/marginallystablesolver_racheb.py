@@ -337,7 +337,7 @@ def growthratescurve(ra_list,Prandtl,Nz, ad, sig,Lz):
     freq_ax.set_xscale('log')
     return
  
-bound_upper=20
+bound_upper=30
 bound_lower=4
 step_factor=2
 powers = np.linspace(bound_lower,bound_upper,step_factor*abs(bound_upper-bound_lower)+1)
@@ -345,7 +345,12 @@ testlist = []
 
 for power in powers:
     testlist.append(10**power)
-growthratescurve(testlist,Prandtl,Nz,ad,sig,Lz)
+
+sig_list = [0.01]
+for sig in sig_list:
+    if rank == 0:
+        print('Sigma: ',sig_list)
+    growthratescurve(testlist,Prandtl,Nz,ad,sig,Lz)
 
 full_dir = path+'/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(full_dir):
@@ -353,18 +358,11 @@ if not os.path.exists(full_dir):
 bckup_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'ad{}'.format(ad)+'/'
 if not os.path.exists(bckup_dir):
     os.makedirs(bckup_dir)
-plt.savefig(bckup_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eigheatmap.png') 
-print_rank('\nFigure path:\n'+bckup_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eigheatmap.png')
-plt.savefig(full_dir+'ad{}'.format(ad)+'sig{}'.format(sig)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eigheatmap.png')
-# plt.savefig(path+'/'+name+'/'+name+'_testrunfig.png')
+plt.savefig(bckup_dir+'ad{}'.format(ad)+'sig{}'.format(sig_list)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eig.png') 
+print_rank(bckup_dir+'ad{}'.format(ad)+'sig{}'.format(sig_list)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eig.png')
+plt.savefig(full_dir+'ad{}'.format(ad)+'sig{}'.format(sig_list)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_ranumsvsmean_eig.png')
 plt.close()
 sys.exit()
-
-# sig_list = [0.01]
-# for sig in sig_list:
-# if rank == 0:
-#     print('Sigma: ',sig_list)
-
 
 # nz_lower=6
 # step_nz=1

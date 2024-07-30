@@ -36,9 +36,11 @@ runsupcrit=config.getboolean('param','runsupcrit')
 if runsupcrit == True:
     Rayleigh = Rayleigh *supercrit
 Prandtl = config.getfloat('param', 'Pr')
+shearReynolds = config.getfloat('param','Re')
 Lx, Lz = Lx, Lz = config.getfloat('param', 'Lx'), config.getfloat('param', 'Lz')
 z_match = config.getfloat('param','zmatch')
 nu = 1/np.sqrt(Rayleigh/Prandtl)
+boundU = (nu*shearReynolds)/(Lz)
 kappa = 1/np.sqrt(Rayleigh*Prandtl)
 # n = config.getint('param', 'n')
 Nz_prime = config.getint('param','Nz')
@@ -69,6 +71,8 @@ calib_c=dist.Field(name='calib_c',bases=(xbasis,zbasis_c))
 p_c  = dist.Field(name='p_c', bases=(xbasis,zbasis_c))
 T_c  = dist.Field(name='T_c', bases=(xbasis,zbasis_c))
 u_c  = dist.VectorField(coords, name='u_c', bases=(xbasis,zbasis_c))
+U_c = dist.VectorField(coords,name='U_c', bases=(zbasis_c,))
+U_r = dist.VectorField(coords,name='U_r', bases=(zbasis_r,))
 nabad_c = dist.Field(name='nabad_c', bases=(zbasis_c, ))
 tau_p  = dist.Field(name='tau_p')
 tau_p2 = dist.Field(name='tau_p2')
@@ -92,6 +96,8 @@ tau_u42  = dist.VectorField(coords, name='tau_u42', bases=xbasis)
 
 z_r  = dist.local_grids(zbasis_r,)[0]
 z_c = dist.local_grids(zbasis_c,)[0]
+U_c['g']=shearReynolds*nu*z_c
+U_r['g']=shearReynolds*nu*z_r
 x = dist.local_grids(xbasis,)[0]
 ex, ez = coords.unit_vector_fields(dist)
 dz = lambda A: d3.Differentiate(A, coords['z'])
@@ -134,7 +140,7 @@ problem.add_equation("T_r(z=z_match) - T_c(z=z_match) = 0")
 problem.add_equation("dz(T_r)(z=z_match) - dz(T_c)(z=z_match) = 0")
 #Boundary Conditions
 problem.add_equation("integ(p_r) + integ(p_c) = 0")
-problem.add_equation("u_r(z=Lz) = 0")
+problem.add_equation("u_r(z=Lz) = boundU*(ex)")
 problem.add_equation("T_r(z=Lz) = -1")
 problem.add_equation("u_c(z=0) = 0")
 problem.add_equation("T_c(z=0) = 1")
@@ -167,7 +173,7 @@ T_c.change_scales((1, 1))
 T_r['g'] *= z_r * (Lz - z_r) # Damp noise at walls
 T_r['g'] += Lz - 2*z_r # Add linear background
 T_c['g'] *= z_c * (Lz - z_c) # Damp noise at walls
-T_c['g'] += Lz - 2*z_c # Add linear background
+T_c['g'] += Lz - 2*z_c # Add linear background   []
 
 
 # Initial timestep
@@ -175,10 +181,10 @@ dt = 1e-3
 
 # Flow properties
 flow = d3.GlobalFlowProperty(solver, cadence=10)
-Reynolds_c = np.sqrt(u_c@u_c) / nu
-Reynolds_r = np.sqrt(u_r@u_r) / nu
-flow.add_property(Reynolds_c, name='Re')
-flow.add_property(Reynolds_r, name='Re')
+kineticenergy_c = (u_c@u_c)*(1/2)
+kineticenergy_r = (u_r@u_r)*(1/2)
+flow.add_property(np.sqrt((u_c-U_c)@(u_c-U_c))/nu, name='Re_c')
+flow.add_property(np.sqrt((u_r-U_r)@(u_r-U_r))/nu, name='Re_r')
 
 #Checkpoints 
 # checkpoints = solver.evaluator.add_file_handler(name+'/checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
@@ -188,7 +194,7 @@ checkpoints.add_tasks(solver.state, layout='g')
 #Snapshots Analysis
 calib_r['g']=z_r*x
 calib_c['g']=z_c*x
-# snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
+#snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
 snapshots = solver.evaluator.add_file_handler(path+'/'+name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
 snapshots.add_task(T_r, name='buoyancy_r')
 snapshots.add_task(T_c, name='buoyancy_c')
@@ -201,11 +207,16 @@ snapshots.add_task(vort_c, name='vorticity_c')
     #Reynolds number
 # profiles = solver.evaluator.add_file_handler(name+'/profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
 profiles = solver.evaluator.add_file_handler(path+'/'+name+'/profiles', sim_dt=0.0200, max_writes=500, mode = 'overwrite')
-profiles.add_task(integx(Reynolds_r), name = "reynolds_r")
-profiles.add_task(integx(Reynolds_c), name = "reynolds_c")
+    #Shear horizontal velocity
+profiles.add_task(integx(u_r@ex), name = 'horizontalU_r') #horizontal velocity top  
+profiles.add_task(integx(u_c@ex), name = 'horizontalU_c') #horizontal velocity bottom
     #Enstrophy
 profiles.add_task(integx(vort_r**2), name = 'entrsophy_r')
 profiles.add_task(integx(vort_c**2), name = 'entrsophy_c')
+    #Kinetic Energy
+profiles.add_task(integx(kineticenergy_r), name = "kineticenergy_r")
+profiles.add_task(integx(kineticenergy_c), name = "kineticenergy_c")
+
 profiles.add_task(T_c(x=0,z=sensor1),name='b_1sig')
 profiles.add_task(T_c(x=0,z=sensor2),name='b_2sig')
 profiles.add_task(T_c(x=0,z=sensor3),name='b_3sig')
@@ -215,6 +226,8 @@ profiles.add_task(T_c(x=0,z=fixedsensor3),name='b_3fixed')
 profiles.add_task(T_c(x=0,z=fixedsensor4),name='b_4fixed')
 profiles.add_task(T_c(x=0,z=fixedsensor5),name='b_5fixed')
 profiles.add_task(T_c(x=0,z=fixedsensor6),name='b_6fixed')
+profiles.add_task(dz(integx(u_r@ex))(z=Lz), name = 'shearingrate_U_r')
+profiles.add_task(dz(integx(u_c@ex))(z=0), name = 'shearingrate_U_c') 
 #CFL
 CFL = d3.CFL(solver, initial_dt=dt, cadence=3, safety=0.35, max_dt=maxtimestep, threshold=0.05)
 CFL.add_velocity(u_r)
@@ -237,8 +250,10 @@ try:
         if (solver.iteration-1) % 10 == 0:
             # logger.info('Iteration: %i, Time: %e, dt: %e,' %(solver.iteration, solver.sim_time, dt))
             # logger.info('Max Re = %f' %flow.max('Re'))
-            max_Re = flow.max('Re')
-            logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, dt, max_Re))
+            max_Re_c = flow.max('Re_c')
+            max_Re_r = flow.max('Re_r')
+            re_termval = [max_Re_c,max_Re_r]
+            logger.info('Iteration=%i, Time=%e, dt=%e, max(Re)=%f' %(solver.iteration, solver.sim_time, dt, max(re_termval)))
             # logger.info('crms = %e' %flow.max('crms'))
             # logger.info('c4rms = %e' %flow.max('c4rms'))
 except:
