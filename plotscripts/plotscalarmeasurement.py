@@ -21,11 +21,12 @@ else:
 config = ConfigParser()
 config.read(str(configfile))
 global lx
-lx = config.getfloat('param','Lx')
-lz = config.getfloat('param','Lz')
+Lx = config.getfloat('param','Lx')
+Lz = config.getfloat('param','Lz')
 Nz = config.getfloat('param','Nz')
 ad = config.getfloat('param','back_ad')
 sig = config.getfloat('param','sig')
+delta = config.getfloat('param','delta')
 name = config.get('param', 'name')
 Ra = config.getfloat('param','Ra')
 supercrit=config.getfloat('param','supercrit')
@@ -86,6 +87,18 @@ if __name__ == "__main__":
     global bfixed_sensor4
     global bfixed_sensor5
     global bfixed_sensor6
+    #Moving senors
+    sensor1 = 1/2*(Lz)-(2)*(sig)-delta#change with sig
+    sensor2 = 1/2*(Lz)-(2)*(sig)-2*delta#change with sig
+    sensor3 = 1/2*(Lz)-(2)*(sig)-3*delta#change with sig
+        #Fixed 1
+    fixedsensor1 = 1/4 + delta
+    fixedsensor2 = 1/4
+    fixedsensor3 = 1/4 - delta 
+        #Fixed 2
+    fixedsensor4 = delta
+    fixedsensor5 = 2*delta
+    fixedsensor6 = 3*delta
     times,bsensor1,bsensor2,bsensor3,bfixed_sensor1,bfixed_sensor2,bfixed_sensor3,bfixed_sensor4,bfixed_sensor5,bfixed_sensor6=[],[],[],[],[],[],[],[],[],[]
     
     output_path = pathlib.Path(path+"/"+name+"/buoyancy/").absolute()
@@ -94,26 +107,26 @@ if __name__ == "__main__":
     power=1e1
     limbool = False
     fig, (ax1,ax2,ax3) = plt.subplots(3, 1)
-    title=r'$\sigma$='+'{}'.format(sig)+'  '+r'$\nabla_{ad}$='+'{}'.format(ad)+' '+'Ra={}'.format(Ra)
+    title=r'$\sigma$='+'{}'.format(sig)+'  '+r'$\nabla_{ad}$='+'{}'.format(ad)+' '+'Ra={}'.format(Ra)+' '+'Lz={}'.format(Lz)
     fig.suptitle(title)
     if limbool:
         ax1.set_ylim(-5/(10**power),5/(10**power))
         ax2.set_ylim(-5/(10**power),5/(10**power))
         ax3.set_ylim(-5/(10**power),5/(10**power))
     ax1.set_title('Near strip',fontsize='x-small')
-    ax1.plot(times,bsensor1,label='b_1strip')
-    ax1.plot(times,bsensor2,label='b_2strip')
-    ax1.plot(times,bsensor3,label='b_3strip')
+    ax1.plot(times,bsensor1,label='Lz={}'.format(sensor1))
+    ax1.plot(times,bsensor2,label='Lz={}'.format(sensor2))
+    ax1.plot(times,bsensor3,label='Lz={}'.format(sensor3))
     ax1.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
     ax2.set_title('Middle',fontsize='x-small')
-    ax2.plot(times,bfixed_sensor1,label='b_1middle')
-    ax2.plot(times,bfixed_sensor2,label='b_2middle')
-    ax2.plot(times,bfixed_sensor3,label='b_3middle')
+    ax2.plot(times,bfixed_sensor1,label='Lz={}'.format(fixedsensor1))
+    ax2.plot(times,bfixed_sensor2,label='Lz={}'.format(fixedsensor2))
+    ax2.plot(times,bfixed_sensor3,label='Lz={}'.format(fixedsensor3))
     ax2.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
     ax3.set_title('Near boundary',fontsize='x-small')
-    ax3.plot(times,bfixed_sensor4,label='b_1boundary')
-    ax3.plot(times,bfixed_sensor5,label='b_5boundary')
-    ax3.plot(times,bfixed_sensor6,label='b_6boundary')
+    ax3.plot(times,bfixed_sensor4,label='Lz={}'.format(fixedsensor4))
+    ax3.plot(times,bfixed_sensor5,label='Lz={}'.format(fixedsensor5))
+    ax3.plot(times,bfixed_sensor6,label='Lz={}'.format(fixedsensor6))
     ax3.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
     plt.tight_layout()
     figname = 'ad{}'.format(ad)+'sig{}'.format(sig)+'ra{}'.format(Ra)+'_'+name+'bouyancyflucuationsDNS.png'
