@@ -24,8 +24,13 @@ global lx
 lx = config.getfloat('param','Lx')
 lz = config.getfloat('param','Lz')
 sig = config.getfloat('param','sig')
+ad = config.getfloat('param','back_ad')
 name = config.get('param', 'name')
 Ra = config.getfloat('param','Ra')
+supercrit=config.getfloat('param','supercrit')
+runsupcrit=config.getboolean('param','runsupcrit')
+if runsupcrit == True:
+    Ra = Ra *supercrit
 def main(filename, start, count, output):
     """Save plot of specified tasks for given range of analysis writes."""
 
@@ -35,7 +40,7 @@ def main(filename, start, count, output):
     titlelist=['Buoyancy','Vorticity']
     scale = 3
     dpi = 200
-    title_func = lambda sim_time:'Ra= '+f"{(Ra):.1e}" +' t = {:.3f}'.format(sim_time)
+    title_func = lambda sim_time:'Ra= '+f"{(Ra):.1e}"+r'$\nabla_{ad}$'+'= {:.1f}'.format(ad)+r'$\sigma$'+'= {:.1f}'.format(sig) +' t = {:.3f}'.format(sim_time)
     savename_func = lambda write: 'write_{:06}.png'.format(write)
 
     # Layout

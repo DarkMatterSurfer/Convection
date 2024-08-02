@@ -14,19 +14,6 @@ import os
 path = os.path.dirname(os.path.abspath(__file__))
 from scipy.optimize import minimize_scalar
 import time
-if len(sys.argv) < 2:
-    # raise
-    try:
-        configfile = path + "/options.cfg"
-    except:
-        print('please provide config file')
-        raise
-else:
-    configfile = sys.argv[1]
-#Config file
-config = ConfigParser()
-config.read(str(configfile))
-solvebool=config.getboolean('param','solvbool')
 #Eigenvalue Spectrum Function
 def geteigenval(Rayleigh, Prandtl, kx,Nz, ad, sig,Lx,Lz,Nx=2,NEV=10, target=0):
     """Compute maximum linear growth rate."""
@@ -237,12 +224,10 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,Re):
     
     solver = problem.build_solver()
     sp = solver.subproblems[0]
-    NEV = 40
-    target = 3*0.0001
-    if solvebool:
-        solver.solve_sparse(sp,N=NEV,target=target)    
-    else:
-        solver.solve_dense(sp)
+    if rank == 0:
+        print('trying dense solve')
+
+    solver.solve_dense(sp)    
     return solver
 def adiabatresolutionchecker(ad,sig,Nz,Lz,path):
     # Create coordinates and bases

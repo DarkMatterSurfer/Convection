@@ -55,7 +55,6 @@ ad = config.getfloat('param','back_ad')
 epsilon = config.getfloat('param','epsilon')
 tol = config.getfloat('param','tol')
 name = config.get('param', 'name')
-solvebool=config.getboolean('param','solvbool')
 #Single core printing
 def print_rank(string):
     if rank == 0:
@@ -184,14 +183,9 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,Re):
     
     solver = problem.build_solver()
     sp = solver.subproblems[0]
-    NEV = 40
-    target = 3*0.0001
-    if solvebool:
-        solver.solve_sparse(sp,N=NEV,target=target)    
-        print_rank('solving sparse')
-    else:
-        print_rank('solving dense')
-        solver.solve_dense(sp)
+    if rank == 0:
+        print('trying dense solve')
+    solver.solve_dense(sp)    
     return solver
 def getgrowthrates(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
     comm = MPI.COMM_WORLD
@@ -285,7 +279,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
                 ratelist = getgrowthrates(ra_minus, Prandtl, Nz, ad, sig,Lz,Re)[0]
                 minus_eig = max(ratelist)
                 if rank == 0:
-                    print(minus_eig)
+                    print(plus_eig)
                 minusfound = minus_eig < tol/2
         if max_omeg < tol:
             ra_minus = Rayleigh
@@ -382,12 +376,12 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
         comm.barrier()
     return results
 
-ad_upper=51
+ad_upper=50
 ad_lower=1
 step_factor=1
 ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
 
-sig_list=[0.01,0.001]
+sig_list=[0.001]
 re_list=[0]
 fig, (margRa_ax,margKx_ax) = plt.subplots(2, 1,sharex='row')
 fig.suptitle('Marginal Stability Curves')
@@ -449,10 +443,24 @@ for r in re_list:
         margKx_ax.set_title('Marginal Kx',fontsize='x-small')
         margKx_ax.set_xlabel(r'$\nabla_{ad}$')
         margKx_ax.set_ylabel(r'$k_{x}$')
-        margKx_ax.set_yscale('log')
         margKx_ax.scatter(ad_list,marginalkx,label=r'$\sigma$'+'={}'.format(sigma)+' Re={}'.format(r))
         margKx_ax.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
 
+        # margRa_ax.set_title('Marginal Ra Curve',fontsize='x-small')
+        # margRa_ax.set_ylabel(r'$Ra_{marginal}$')
+        # margRa_ax.set_yscale('log')
+        # marginalRa = [2736.0, 44331.08203125, 228170737.16060257, 960144244.5556997, 2176381650.043309, 3883587275.431286, 6072371754.27238, 8747565804.708052, 11909375173.328724, 15559819638.68864, 19679600985.89515, 24306421237.217667, 29420205050.98044, 35011911504.1514, 41089418603.62689, 47680177398.20279, 54804266403.98895, 62390696836.37707, 70547488378.33995, 79189383469.60754, 88324389253.14993, 97930960398.72568, 107936845878.91776, 118372146408.22717, 129166090911.02817, 140376673264.26804, 151943354716.09674, 163962311485.6317, 176211449013.61105, 188794908202.20508, 201862133904.18872]
+        # margRa_ax.scatter(ad_list,marginalRa,label=r'$\sigma$'+'={}'.format(sigma)+' Re={}'.format(r))
+        # marginal_sigRa = [0.005472000000000001, 0.3546486562500001, 1825.365897284821, 7681.153956445599, 17411.053200346476, 31068.69820345029, 48578.974034179046, 69980.52643766442, 95275.00138662981, 124478.55710950914, 157436.8078871612, 194451.36989774136, 235361.64040784354, 280095.2920332112, 328715.3488290152, 381441.41918562236, 438434.1312319117, 499125.57469101663, 564379.9070267197, 633515.0677568604, 706595.1140251996, 783447.6831898056, 863494.7670313421, 946977.1712658176, 1033328.7272882255, 1123013.3861141445, 1215546.8377287742, 1311698.491885054, 1409691.5921088886, 1510359.265617641, 1614897.07123351]
+        # margRa_ax.scatter(ad_list,marginal_sigRa,label='Rescale '+r'$\sigma$'+'={}'.format(sigma)+' Re={}'.format(r))
+        # margRa_ax.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
+
+        # margKx_ax.set_title('Marginal Kx',fontsize='x-small')
+        # margKx_ax.set_xlabel(r'$\nabla_{ad}$')
+        # margKx_ax.set_ylabel(r'$k_{x}$')
+        # marginalkx = [6.283185307179586, 6.283185307179586, 43.982297150257104, 69.11503837897544, 81.68140899333463, 100.53096491487338, 113.09733552923255, 119.38052083641213, 131.94689145077132, 144.51326206513048, 150.79644737231007, 157.07963267948966, 169.64600329384882, 175.92918860102841, 182.212373908208, 188.49555921538757, 194.77874452256717, 201.06192982974676, 207.34511513692635, 213.62830044410595, 219.9114857512855, 226.1946710584651, 232.4778563656447, 238.76104167282426, 245.04422698000386, 251.32741228718345, 257.610597594363, 263.89378290154264, 263.89378290154264, 270.1769682087222, 276.46015351590177]
+        # margKx_ax.scatter(ad_list,marginalkx,label=r'$\sigma$'+'={}'.format(sigma)+' Re={}'.format(r))
+        # margKx_ax.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
 plt.tight_layout()
 if rank == 0:
     print('Final lists  #######')
@@ -466,5 +474,5 @@ fulldir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditio
 print_rank(fulldir+'ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_marginalstabilitycurve.png')
 if not os.path.exists(fulldir):
     os.makedirs(fulldir)
-plt.savefig(fulldir+'ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kxmax{}'.format(max(kx_global))+'_marginalstabilitycurve.png') 
+plt.savefig(fulldir+'ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kx{}'.format(len(kx_global))+'_marginalstabilitycurve.png') 
 plt.close()

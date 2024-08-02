@@ -125,7 +125,6 @@ if comm.rank == 0:
     ax2.set_ylabel(r'$\text{f}$')
     # ax1.set_ylim(bottom=0)
     ax2.set_xlabel(r'$k_x$')
-    ax2.set_xscale('log')
     ax1.title.set_text(r'Rayleigh-Benard Modes Growth Rates ($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f$)' %(Rayleigh, Prandtl,ad))
     ax2.title.set_text(r'Rayleigh-Benard Modes Frequency($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f$)' %(Rayleigh, Prandtl,ad))
 

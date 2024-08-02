@@ -28,6 +28,10 @@ ad = config.getfloat('param','back_ad')
 sig = config.getfloat('param','sig')
 name = config.get('param', 'name')
 Ra = config.getfloat('param','Ra')
+supercrit=config.getfloat('param','supercrit')
+runsupcrit=config.getboolean('param','runsupcrit')
+if runsupcrit == True:
+    Ra = Ra *supercrit
 def main(filename, start, count, output):
     """Save plot of specified tasks for given range of analysis writes."""
     global times
