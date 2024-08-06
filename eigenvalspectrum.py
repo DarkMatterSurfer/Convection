@@ -43,7 +43,13 @@ Re_arg = config.getfloat('param','Re')
 Lz = config.getfloat('param','Lz')
 L_x = config.getfloat('param','Lx')
 pi=np.pi
-kx_global=eval(config.get('param','kx_global'))
+kxbool=config.getboolean('param','kxbool')
+if kxbool:
+    print('\nRunning arithmetically spaced wavenumbers [2*pi]\n')
+    kx_global =eval(config.get('param','kx_int')) #arithmethically spaced wavenumbers
+else:
+    print('\nRunning logarithmetically spaced wavenumbers [2*pi]\n')
+    kx_global =eval(config.get('param','kx_log')) #logarithemically spaced wavenumbers
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)

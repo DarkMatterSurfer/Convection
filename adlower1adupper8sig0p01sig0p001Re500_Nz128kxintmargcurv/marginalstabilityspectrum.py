@@ -390,9 +390,9 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
         comm.barrier()
     return results
 
-ad_upper=1
+ad_upper=10
 ad_lower=1
-step_factor=1
+step_factor=2
 ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
 
 sig_list=[0.01,0.001]
@@ -419,7 +419,7 @@ for r in re_list:
         if rank == 0:
             print('########')
             print('Condtions')
-            print('Sig:',sigma)
+            print('Sig:',sig)
             print('Nz resoluton:',Nz)
             print('Min adiabat:',min(ad_list))
             print('Max adiabat:',max(ad_list))

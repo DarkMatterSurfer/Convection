@@ -41,7 +41,13 @@ Re_arg = config.getfloat('param','Re')
 Lz = config.getfloat('param','Lz')
 Lx = config.getfloat('param','Lx')
 pi=np.pi
-kx_global =eval(config.get('param','kx_global'))
+kxbool=config.getboolean('param','kxbool')
+if kxbool:
+    print('\nRunning arithmetically spaced wavenumbers [2*pi]\n')
+    kx_global =eval(config.get('param','kx_int')) #arithmethically spaced wavenumbers
+else:
+    print('\nRunning logarithmetically spaced wavenumbers [2*pi]\n')
+    kx_global =eval(config.get('param','kx_log')) #logarithemically spaced wavenumbers
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)
@@ -66,14 +72,12 @@ def getgrowthrates(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
     comm = MPI.COMM_WORLD
     # Compute growth rate over local wavenumbers
     kx_local = kx_global[comm.rank::comm.size]
-    if rank == 0:
-        print(kx_local)
+    print_rank('\nkx array shape: '+str(kx_local.shape)+'\n')
     t1 = time.time()
     # for all 
     growth_locallist = []
     frequecny_locallist = []
-    # if rank == 0:
-    #     print('here')
+
     for kx in kx_local:
         if rank == 0:
             print('2 here. In getgrowthrates')

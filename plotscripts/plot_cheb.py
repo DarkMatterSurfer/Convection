@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.colors as col
 from dedalus.extras import plot_tools
 import os 
 from docopt import docopt
@@ -89,7 +90,7 @@ def main(filename, start, count, output):
                 #sigma lines
                 ax.axhline(0.5+sig,linestyle='--',color='k',lw=0.45)
                 ax.axhline(0.5-sig,linestyle='--',color='k',lw=0.45)
-                c = ax.pcolor(xpop,zglob,globtask[index, ...].T, cmap='RdBu') #buoyancy
+                c = ax.pcolor(xpop,zglob,globtask[index, ...].T, cmap='RdBu',norm = col.CenteredNorm()) #buoyancy
                 ax.set_title(titlelist[n],pad=50)
                 fig.colorbar(c, ax=ax,location='top',orientation='horizontal')
                 # Call 3D plotting helper, slicing in time

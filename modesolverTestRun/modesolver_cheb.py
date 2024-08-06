@@ -61,11 +61,11 @@ print(f"Slowest decaying mode: λ = {evals[0]}")
 solver.set_state(np.argmin(np.abs(solver.eigenvalues - evals[0])), sp.subsystems[0])
 
 #Fields
-p = solver.state[0]
 b = solver.state[1]
 ux = solver.state[2]
+p = solver.state[0]
 uz = solver.state[3]
-b.change_scales(1)
+# b.change_scales(1)
 p.change_scales(1)
 ux.change_scales(1)
 uz.change_scales(1)
