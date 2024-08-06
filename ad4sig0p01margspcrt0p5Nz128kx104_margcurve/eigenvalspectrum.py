@@ -43,13 +43,7 @@ Re_arg = config.getfloat('param','Re')
 Lz = config.getfloat('param','Lz')
 L_x = config.getfloat('param','Lx')
 pi=np.pi
-kxbool=config.getboolean('param','kxbool')
-if kxbool:
-    print('\nRunning arithmetically spaced wavenumbers [2*pi]\n')
-    kx_global =eval(config.get('param','kx_int')) #arithmethically spaced wavenumbers
-else:
-    print('\nRunning logarithmetically spaced wavenumbers [2*pi]\n')
-    kx_global =eval(config.get('param','kx_log')) #logarithemically spaced wavenumbers
+kx_global=eval(config.get('param','kx_global'))
 wavenum_list = []
 for i in kx_global:
     wavenum_list.append(i)
@@ -131,7 +125,6 @@ if comm.rank == 0:
     ax2.set_ylabel(r'$\text{f}$')
     # ax1.set_ylim(bottom=0)
     ax2.set_xlabel(r'$k_x$')
-    ax2.set_xscale('log')
     ax1.title.set_text(r'Rayleigh-Benard Modes Growth Rates ($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f$)' %(Rayleigh, Prandtl,ad))
     ax2.title.set_text(r'Rayleigh-Benard Modes Frequency($\mathrm{Ra} = %.2f, \; \mathrm{Pr} = %.2f, \; \mathrm{\nabla_{ad}} = %.2f$)' %(Rayleigh, Prandtl,ad))
 

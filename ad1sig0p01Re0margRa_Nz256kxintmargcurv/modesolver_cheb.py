@@ -24,8 +24,8 @@ from configparser import ConfigParser
 config = ConfigParser()
 config.read(str(configfile))
 # Parameters
-Nz = config.getint('param', 'Nz')
-Nx = config.getint('param','Nx')
+Nz = config.getfloat('param', 'Nz')
+Nx = config.getfloat('param','Nx')
 Rayleigh = config.getfloat('param', 'Ra') 
 Prandtl = config.getfloat('param', 'Pr')
 Re = config.getfloat('param','Re')
@@ -42,9 +42,9 @@ solver = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,Re)
 modecompbool = config.getboolean('param','modecompbool')
 name=config.get('param','name')
 #Single core printing
-def print_rank(input):
+def print_rank(string):
     if rank == 0:
-        print(str(input))
+        print(string)
     return
 # Bases
 zcoord = d3.Coordinate('z')
@@ -61,9 +61,9 @@ print(f"Slowest decaying mode: λ = {evals[0]}")
 solver.set_state(np.argmin(np.abs(solver.eigenvalues - evals[0])), sp.subsystems[0])
 
 #Fields
-p = solver.state[0]
 b = solver.state[1]
 ux = solver.state[2]
+p = solver.state[0]
 uz = solver.state[3]
 b.change_scales(1)
 p.change_scales(1)
@@ -76,9 +76,7 @@ phaser=np.exp(((1j*phase)*(2*pi))/4)
 #Modes
 # b['g']=b['g']-(2 * (z - 1/2))
 b_mode=(np.outer(b['g'],mode)*phaser).real
-print_rank(b_mode.shape)
-sys.exit()
-# b_mode = b_mode-2*(z[..., np.newaxis]-1/2)
+b_mode = b_mode-2*(z[..., np.newaxis]-1/2)
 press_mode=(np.outer(p['g'],mode)*phaser).real
 ux_mode=(np.outer(ux['g'],mode)*phaser).real
 uz_mode=(np.outer(uz['g'],mode)*phaser).real

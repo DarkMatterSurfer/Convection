@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.colors as col
 from dedalus.extras import plot_tools
 import os 
 from docopt import docopt
@@ -24,8 +25,13 @@ global lx
 lx = config.getfloat('param','Lx')
 lz = config.getfloat('param','Lz')
 sig = config.getfloat('param','sig')
+ad = config.getfloat('param','back_ad')
 name = config.get('param', 'name')
 Ra = config.getfloat('param','Ra')
+supercrit=config.getfloat('param','supercrit')
+runsupcrit=config.getboolean('param','runsupcrit')
+if runsupcrit == True:
+    Ra = Ra *supercrit
 def main(filename, start, count, output):
     """Save plot of specified tasks for given range of analysis writes."""
 
@@ -35,7 +41,7 @@ def main(filename, start, count, output):
     titlelist=['Buoyancy','Vorticity']
     scale = 3
     dpi = 200
-    title_func = lambda sim_time:'Ra= '+f"{(Ra):.1e}" +' t = {:.3f}'.format(sim_time)
+    title_func = lambda sim_time:'Ra= '+f"{(Ra):.1e}"+r'$\nabla_{ad}$'+'= {:.1f}'.format(ad)+r'$\sigma$'+'= {:.1f}'.format(sig) +' t = {:.3f}'.format(sim_time)
     savename_func = lambda write: 'write_{:06}.png'.format(write)
 
     # Layout
@@ -84,7 +90,7 @@ def main(filename, start, count, output):
                 #sigma lines
                 ax.axhline(0.5+sig,linestyle='--',color='k',lw=0.45)
                 ax.axhline(0.5-sig,linestyle='--',color='k',lw=0.45)
-                c = ax.pcolor(xpop,zglob,globtask[index, ...].T, cmap='RdBu') #buoyancy
+                c = ax.pcolor(xpop,zglob,globtask[index, ...].T, cmap='RdBu',norm = col.CenteredNorm()) #buoyancy
                 ax.set_title(titlelist[n],pad=50)
                 fig.colorbar(c, ax=ax,location='top',orientation='horizontal')
                 # Call 3D plotting helper, slicing in time

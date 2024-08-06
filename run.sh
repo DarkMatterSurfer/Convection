@@ -11,21 +11,12 @@ source $config
 # fi
 mkdir $name
 cp $config $name
-<<<<<<< HEAD
-mpiexec -n $nprocs python3 ~/Convection/rayleighbenard_chebcomp.py $config
-mpiexec -n 1 python3 ~/Convection/plotscripts/plotscalarmeasurement.py $config
-mpiexec -n $nprocs python3 ~/Convection/plotscripts/plot_cheb.py $config
-png2mp4 ${name}/frames/ ${name}/movie.mp4 120
-echo ${name}/movie.mp4
-code ${name}/movie.mp4
-rm -rf ${name}_frames ; rm -rf snapshots
-=======
 cp $solver $name
-mpirun -n $nprocs python3 $solver $config
-mpirun -n $nprocs python3 $solver $config
-mpirun -n $nprocs python3 ~/Convection/plotscripts/plot_cheb.py $config
-mpirun -n $nprocs python3 ~/Convection/plotscripts/plotscalarmeasurement.py $config
-png2mp4 ${name}/frames/ ${name}/movie.mp4 120
-echo ${name}/movie.mp4
-code ${name}/movie.mp4
->>>>>>> cc24f7fe19cad6479c57bb98d332ed8dc714f83f
+mpiexec -n $nprocs python3 $solver $config
+# mpiexec -n $nprocs python3 ~/Convection/rayleighbenard_chebcomp.py $config
+# mpiexec -n $nprocs python3 ~/Convection/plotscripts/plot_cheb.py $config
+# mpiexec -n 1 python3 ~/Convection/plotscripts/plotscalarmeasurement.py $config
+# png2mp4 ${name}/frames/ ${name}/movie.mp4 120
+# echo ${name}/movie.mp4
+# code ${name}/movie.mp4
+# rm -rf ${name}_frames ; rm -rf snapshots

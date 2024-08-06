@@ -40,7 +40,6 @@ Nz = config.getint('param', 'Nz')
 Nx = config.getint('param','Nx')
 Rayleigh = config.getfloat('param', 'Ra') 
 sig = sig_og = config.getfloat('param','sig')
-ad = config.getfloat('param','back_ad')
 Rayleigh_sig = config.getfloat('param','Ra_sig')
 if not Rayleigh_sig == 0:
     Rayleigh = (Rayleigh_sig)/((2*sig)**3)
@@ -61,6 +60,8 @@ for i in kx_global:
     wavenum_list.append(i)
 maxomeg_kx = 0
 print_rank('Wavenumbers :\n'+str(wavenum_list))
+sys.exit()
+ad = config.getfloat('param','back_ad')
 #Search parameters
 epsilon = config.getfloat('param','epsilon')
 tol = config.getfloat('param','tol')
@@ -390,12 +391,12 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
         comm.barrier()
     return results
 
-ad_upper=1
+ad_upper=8
 ad_lower=1
-step_factor=1
+step_factor=4
 ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
 
-sig_list=[0.01,0.001]
+sig_list=[0.001]
 re_list=[0]
 fig, (margRa_ax,margKx_ax) = plt.subplots(2, 1,sharex='row')
 fig.suptitle('Marginal Stability Curves')
@@ -419,7 +420,7 @@ for r in re_list:
         if rank == 0:
             print('########')
             print('Condtions')
-            print('Sig:',sigma)
+            print('Sig:',sig)
             print('Nz resoluton:',Nz)
             print('Min adiabat:',min(ad_list))
             print('Max adiabat:',max(ad_list))

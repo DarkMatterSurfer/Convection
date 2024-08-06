@@ -96,8 +96,8 @@ tau_u42  = dist.VectorField(coords, name='tau_u42', bases=xbasis)
 
 z_r  = dist.local_grids(zbasis_r,)[0]
 z_c = dist.local_grids(zbasis_c,)[0]
-U_c['g']=shearReynolds*nu*z_c
-U_r['g']=shearReynolds*nu*z_r
+U_c['g']=(shearReynolds*nu*z_c)/(Lz)
+U_r['g']=(shearReynolds*nu*z_r)/(Lz)
 x = dist.local_grids(xbasis,)[0]
 ex, ez = coords.unit_vector_fields(dist)
 dz = lambda A: d3.Differentiate(A, coords['z'])
@@ -188,14 +188,14 @@ flow.add_property(np.sqrt((u_r-U_r)@(u_r-U_r))/nu, name='Re_r')
 
 #Checkpoints 
 # checkpoints = solver.evaluator.add_file_handler(name+'/checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
-checkpoints = solver.evaluator.add_file_handler(path+'/checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
+checkpoints = solver.evaluator.add_file_handler(name+'/checkpoints', sim_dt=100, max_writes=1, mode = 'overwrite')
 checkpoints.add_tasks(solver.state, layout='g')
 
 #Snapshots Analysis
 calib_r['g']=z_r*x
 calib_c['g']=z_c*x
 #snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
-snapshots = solver.evaluator.add_file_handler(path+'/'+name+"/snapshots", sim_dt=0.05, max_writes=50, mode = 'overwrite')
+snapshots = solver.evaluator.add_file_handler(name+"/snapshots", sim_dt=0.035, max_writes=50, mode = 'overwrite')
 snapshots.add_task(T_r, name='buoyancy_r')
 snapshots.add_task(T_c, name='buoyancy_c')
 vort_r=-d3.div(d3.skew(u_r))
@@ -206,7 +206,7 @@ snapshots.add_task(vort_c, name='vorticity_c')
 #Profiles
     #Reynolds number
 # profiles = solver.evaluator.add_file_handler(name+'/profiles', sim_dt=0.0250, max_writes=500, mode = 'overwrite')
-profiles = solver.evaluator.add_file_handler(path+'/'+name+'/profiles', sim_dt=0.0200, max_writes=500, mode = 'overwrite')
+profiles = solver.evaluator.add_file_handler(name+'/profiles', sim_dt=0.0200, max_writes=500, mode = 'overwrite')
     #Shear horizontal velocity
 profiles.add_task(integx(u_r@ex), name = 'horizontalU_r') #horizontal velocity top  
 profiles.add_task(integx(u_c@ex), name = 'horizontalU_c') #horizontal velocity bottom
@@ -216,7 +216,7 @@ profiles.add_task(integx(vort_c**2), name = 'entrsophy_c')
     #Kinetic Energy
 profiles.add_task(integx(kineticenergy_r), name = "kineticenergy_r")
 profiles.add_task(integx(kineticenergy_c), name = "kineticenergy_c")
-
+    #Bouyancy flucuation sensors
 profiles.add_task(T_c(x=0,z=sensor1),name='b_1sig')
 profiles.add_task(T_c(x=0,z=sensor2),name='b_2sig')
 profiles.add_task(T_c(x=0,z=sensor3),name='b_3sig')
@@ -226,10 +226,11 @@ profiles.add_task(T_c(x=0,z=fixedsensor3),name='b_3fixed')
 profiles.add_task(T_c(x=0,z=fixedsensor4),name='b_4fixed')
 profiles.add_task(T_c(x=0,z=fixedsensor5),name='b_5fixed')
 profiles.add_task(T_c(x=0,z=fixedsensor6),name='b_6fixed')
-profiles.add_task(dz(integx(u_r@ex))(z=Lz), name = 'shearingrate_U_r')
-profiles.add_task(dz(integx(u_c@ex))(z=0), name = 'shearingrate_U_c') 
+    #Shearing rate
+profiles.add_task(dz(integx(u_r@ex))(z=Lz), name = 'shearingrate_U_r')#top half shearing rate
+profiles.add_task(dz(integx(u_c@ex))(z=0), name = 'shearingrate_U_c') #bottom half shearing rate
 #CFL
-CFL = d3.CFL(solver, initial_dt=dt, cadence=3, safety=0.35, max_dt=maxtimestep, threshold=0.05)
+CFL = d3.CFL(solver, initial_dt=dt, cadence=3, safety=3, max_dt=maxtimestep, threshold=0.05)
 CFL.add_velocity(u_r)
 CFL.add_velocity(u_c)
 # Main loop
@@ -237,7 +238,7 @@ try:
     logger.info('Starting loop')
     while solver.proceed:
 
-        dt = maxtimestep#CFL.compute_timestep()
+        dt = CFL.compute_timestep()
 
         if solver.sim_time > 1:
           dt = min(dt,maxtimestep)
