@@ -3,7 +3,7 @@
 #SBATCH --partition=ciera-std
 #SBATCH --time=32:00:00
 #SBATCH --mem=156G
-#SBATCH --nodes=4
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=52
 #SBATCH --job-name=${0##*/}
 
