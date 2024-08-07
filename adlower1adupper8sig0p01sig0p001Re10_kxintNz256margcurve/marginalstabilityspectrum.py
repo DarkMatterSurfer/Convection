@@ -403,7 +403,7 @@ marginalRa = []
 marginal_sigRa = []
 marginalkx = []
 sig_list=[0.01,0.001]
-re_list=[1000]
+re_list=[10]
 fig, (margRa_ax,margKx_ax) = plt.subplots(2, 1,sharex='row')
 fig.suptitle('Marginal Stability Curves')
 for r in re_list: 
