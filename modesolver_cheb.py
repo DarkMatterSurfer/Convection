@@ -34,8 +34,8 @@ Lz = config.getfloat('param','Lz')
 pi=np.pi
 kx = config.getfloat('param','kx')
 wavenum_list = []
-NEV = config.getint('param','NEV')
-target = config.getint('param','target')
+NEV = config.getfloat('param','NEV')
+target = config.getfloat('param','target')
 ad = config.getfloat('param','back_ad')
 sig = sig_og = config.getfloat('param','sig')
 solver = modesolver(Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,Re)
@@ -61,14 +61,22 @@ print(f"Slowest decaying mode: λ = {evals[0]}")
 solver.set_state(np.argmin(np.abs(solver.eigenvalues - evals[0])), sp.subsystems[0])
 
 #Fields
-p = solver.state[0]
-b = solver.state[1]
-ux = solver.state[2]
-uz = solver.state[3]
-b.change_scales(1)
-p.change_scales(1)
-ux.change_scales(1)
-uz.change_scales(1)
+p_r = solver.state[0]
+b_r = solver.state[1]
+ux_r = solver.state[2]
+uz_r = solver.state[3]
+p_c = solver.state[14]
+b_c = solver.state[15]
+ux_c = solver.state[16]
+uz_c = solver.state[17]
+b_r.change_scales(1)
+p_r.change_scales(1)
+ux_r.change_scales(1)
+uz_r.change_scales(1)
+b_r.change_scales(1)
+p_r.change_scales(1)
+ux_r.change_scales(1)
+uz_r.change_scales(1)
 #Heat Map
 pi=np.pi
 phase=1

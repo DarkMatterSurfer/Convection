@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --account=b1094
 #SBATCH --partition=ciera-std
-#SBATCH --time=32:00:00
+#SBATCH --time=60:00:00
 #SBATCH --mem=156G
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=52
