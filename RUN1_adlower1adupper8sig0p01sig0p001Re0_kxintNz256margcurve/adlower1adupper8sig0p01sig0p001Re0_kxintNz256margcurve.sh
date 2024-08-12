@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --account=b1094
 #SBATCH --partition=ciera-std
-#SBATCH --time=40:00:00
-#SBATCH --exclusive
+#SBATCH --time=32:00:00
+#SBATCH --mem=156G
 #SBATCH --nodes=4
-#SBATCH --ntasks-per-node=26
+#SBATCH --ntasks-per-node=52
 #SBATCH --job-name=${0##*/}
 
 config=options.cfg

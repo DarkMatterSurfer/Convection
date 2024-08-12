@@ -41,7 +41,7 @@ def main(filename, start, count, output):
     titlelist=['Buoyancy','Vorticity']
     scale = 3
     dpi = 200
-    title_func = lambda sim_time:'Ra= '+f"{(Ra):.1e}"+r'$\nabla_{ad}$'+'= {:.1f}'.format(ad)+r'$\sigma$'+'= {:.1f}'.format(sig) +' t = {:.3f}'.format(sim_time)
+    title_func = lambda sim_time:'Ra= '+f"{(Ra):.1e}"+r' $\nabla_{ad}$'+'= {:.1f}'.format(ad)+r' $\sigma$'+'= {:.3f}'.format(sig) +' t = {:.3f}'.format(sim_time)
     savename_func = lambda write: 'write_{:06}.png'.format(write)
 
     # Layout

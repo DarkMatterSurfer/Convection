@@ -45,7 +45,6 @@ Rayleigh_sig = config.getfloat('param','Ra_sig')
 if not Rayleigh_sig == 0:
     Rayleigh = (Rayleigh_sig)/((2*sig)**3)
 Prandtl = config.getfloat('param', 'Pr')
-Re_arg = config.getfloat('param','Re')
 Lz = config.getfloat('param','Lz')
 Lx = config.getfloat('param','Lx')
 pi=np.pi
@@ -340,7 +339,6 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
             else:
                 filename = 'ad{}'.format(ad)+'Nz{}'.format(Nz)+'kxlen{}'.format(len(kx_global))+'maxkx{}'.format(max(wavenum_list))+'Re{}'.format(Re)+'_LOG.csv'
             full_dir = '/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'sig{}'.format(sig)+'/'
-<<<<<<< HEAD
             try: 
                 if not os.path.exists(full_dir):
                     os.makedirs(full_dir)
@@ -348,10 +346,6 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
                 full_dir = '/home/brogers/Convection/eigenvalprob_plots/marginalstabilityconditions/'+'sig{}'.format(sig)+'/'
                 if not os.path.exists(full_dir):
                     os.makedirs(full_dir)
-=======
-            if not os.path.exists(full_dir):
-                os.makedirs(full_dir)
->>>>>>> 82224e4dc6e10a7cf90e736a6bd8970dee8fe3d6
             csvname = full_dir+filename
             with open(csvname, 'w', newline='') as csvfile:
                 stabilitylog = csv.writer(csvfile, delimiter=',',
@@ -400,23 +394,15 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
         comm.barrier()
     return results
 
-<<<<<<< HEAD
-ad_upper=2
-=======
-ad_upper=1
->>>>>>> 82224e4dc6e10a7cf90e736a6bd8970dee8fe3d6
+ad_upper=8
 ad_lower=1
-step_factor=1
+step_factor=4
 ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
 
-<<<<<<< HEAD
 marginalRa = []
 marginal_sigRa = []
 marginalkx = []
-sig_list=[0.01]
-=======
 sig_list=[0.01,0.001]
->>>>>>> 82224e4dc6e10a7cf90e736a6bd8970dee8fe3d6
 re_list=[0]
 fig, (margRa_ax,margKx_ax) = plt.subplots(2, 1,sharex='row')
 fig.suptitle('Marginal Stability Curves')
@@ -425,12 +411,6 @@ for r in re_list:
         if rank == 0:
             print('finding origin Ra, kx')
         margorigin = findmarginalomega(Rayleigh, Prandtl,Nz, ad_list[0], sigma,Lz,r)
-<<<<<<< HEAD
-=======
-        marginalRa = []
-        marginal_sigRa = []
-        marginalkx = []
->>>>>>> 82224e4dc6e10a7cf90e736a6bd8970dee8fe3d6
         raorigin = margorigin[0]
         sig_raorgin = (raorigin*(2*sig**3))/(Lz)
         kxorigin = margorigin[2]
@@ -485,7 +465,6 @@ for r in re_list:
             margKx_ax.set_yscale('log')
         margKx_ax.scatter(ad_list,marginalkx,label=r'$\sigma$'+'={}'.format(sigma)+' Re={}'.format(r))
         margKx_ax.legend(bbox_to_anchor=(1.05, 1.0), loc='upper left')
-<<<<<<< HEAD
         csvfile ='ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sig{}'.format(sigma)+'Nz{}'.format(Nz)+'kxlen{}'.format(len(kx_global))+'Re{}'.format(r)+'_INTmarginalstabilitycurve.csv'
         if kxbool:
             header = '[Background adiabat, Marginal Ra, Marginal (rescaled) Ra, Marginal kx] sig = {}, Re = {}, Nz = {}, kx ~ {}'.format(sigma,r,Nz,'INT')
@@ -499,20 +478,6 @@ if kxbool:
     figfile='ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kxlen{}'.format(len(kx_global))+'Re{}'.format(re_list)+'_INTmarginalstabilitycurve.png'
 else:
     figfile='ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kxlen{}'.format(len(kx_global))+'Re{}'.format(re_list)+'_LOGmarginalstabilitycurve.png'
-=======
-
-plt.tight_layout()
-if rank == 0:
-    print('Final lists  #######')
-    print('Final wavenumber lists:',marginalRa)
-    print('Final ra list:',marginalRa)
-
-if kxbool:
-    figfile='ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kxlen{}'.format(len(kx_global))+'maxkx{}'.format(max(wavenum_list))+'Re{}'.format(Re_arg)+'_marginalstabilitycurve.png'
-else:
-    figfile='ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kxlen{}'.format(len(kx_global))+'maxkx{}'.format(max(wavenum_list))+'Re{}'.format(Re_arg)+'_marginalstabilitycurve.png'
-
->>>>>>> 82224e4dc6e10a7cf90e736a6bd8970dee8fe3d6
 fulldir = path+'/eigenvalprob_plots/marginalstabilityconditions/'
 if not os.path.exists(fulldir):
     os.makedirs(fulldir)
@@ -522,7 +487,6 @@ print_rank(fulldir+figfile)
 if not os.path.exists(fulldir):
     os.makedirs(fulldir)
 plt.savefig(fulldir+figfile) 
-<<<<<<< HEAD
 plt.close()
 plt.tight_layout()
 
@@ -530,6 +494,3 @@ if rank == 0:
     print('Final lists  #######')
     print('Final wavenumber lists:',marginalRa)
     print('Final ra list:',marginalRa)
-=======
-plt.close()
->>>>>>> 82224e4dc6e10a7cf90e736a6bd8970dee8fe3d6
