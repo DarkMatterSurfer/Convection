@@ -39,8 +39,7 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,Re):
         print(e)
     # Fields
     omega = dist.Field(name='omega')
-    tau_p_r = dist.Field(name='tau_p_r')
-    tau_p_c = dist.Field(name = 'tau_p_c')
+    tau_p = dist.Field(name='tau_p')
     p_r  = dist.Field(name='p_r', bases=(zbasis_r,))
     T_r  = dist.Field(name='T_r', bases=(zbasis_r,))
     T_z_r  = dist.Field(name='T_z_r', bases=(zbasis_r,))
@@ -102,12 +101,12 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,Re):
     # Problem
     # First-order form: "div(f)" becomes "trace(grad_f)"
     # First-order form: "lap(f)" becomes "div(grad_f)"
-    vars_r = [p_r, T_r, ux_r, uz_r, T_z_r, ux_z_r, uz_z_r, tau_T1_r, tau_T2_r, tau_ux1_r, tau_uz1_r, tau_ux2_r, tau_uz2_r,tau_p_r]
-    vars_c = [p_c, T_c, ux_c, uz_c, T_z_c, ux_z_c, uz_z_c, tau_T1_c, tau_T2_c, tau_ux1_c, tau_uz1_c, tau_ux2_c, tau_uz2_c,tau_p_c]
+    vars_r = [p_r, T_r, ux_r, uz_r, T_z_r, ux_z_r, uz_z_r, tau_T1_r, tau_T2_r, tau_ux1_r, tau_uz1_r, tau_ux2_r, tau_uz2_r,tau_p]
+    vars_c = [p_c, T_c, ux_c, uz_c, T_z_c, ux_z_c, uz_z_c, tau_T1_c, tau_T2_c, tau_ux1_c, tau_uz1_c, tau_ux2_c, tau_uz2_c]
     problem = d3.EVP(vars_r+vars_c, namespace=locals(), eigenvalue=omega)
     #Top Half
         #Continuity 
-    problem.add_equation("dx(ux_r) + uz_z_r + tau_p_r= 0")
+    problem.add_equation("dx(ux_r) + uz_z_r + tau_p = 0")
         #Buoyancy
     problem.add_equation("dt(T_r) + U_r*(dx(T_r)) - kappa*( dx(dx(T_r)) + dz(T_z_r) ) + lift_r(tau_T2_r) - (-nabad_r+2)*uz_r= 0")
         #X comp of momentum
@@ -119,7 +118,7 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,Re):
     problem.add_equation("ux_z_r - dz(ux_r) + lift_r(tau_ux1_r) = 0")
     problem.add_equation("uz_z_r - dz(uz_r) + lift_r(tau_uz1_r) = 0")
     #Bottom Half
-    problem.add_equation("dx(ux_c) + uz_z_c + tau_p_c = 0")
+    problem.add_equation("dx(ux_c) + uz_z_c = 0")
      
     problem.add_equation("dt(T_c) + U_c*(dx(T_c)) - kappa*( dx(dx(T_c)) + dz(T_z_c) ) + lift_c(tau_T2_c) - (-nabad_c+2)*uz_c= 0")
 
@@ -145,7 +144,7 @@ def modesolver (Rayleigh, Prandtl, kx, Nz, ad, sig,Lz,Re):
     problem.add_equation("ux_r(z=Lz) = 0")
     problem.add_equation("uz_r(z=Lz) = 0")
     problem.add_equation("integ(p_r) = 0") # Pressure gauge
-    problem.add_equation("integ(p_c) = 0")
+
     # Solver
     
     solver = problem.build_solver()

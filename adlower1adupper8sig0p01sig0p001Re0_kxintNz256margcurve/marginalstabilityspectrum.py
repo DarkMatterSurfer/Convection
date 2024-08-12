@@ -402,7 +402,7 @@ ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
 marginalRa = []
 marginal_sigRa = []
 marginalkx = []
-sig_list=[0.01,0.001]
+sig_list=[0.001]
 re_list=[0]
 fig, (margRa_ax,margKx_ax) = plt.subplots(2, 1,sharex='row')
 fig.suptitle('Marginal Stability Curves')

@@ -395,7 +395,7 @@ def findmarginalomega(Rayleigh, Prandtl, Nz, ad, sig,Lz,Re):
     return results
 
 ad_upper=8
-ad_lower=7
+ad_lower=1
 step_factor=4
 ad_list = np.linspace(ad_lower,ad_upper,step_factor*abs(ad_upper-ad_lower)+1)
 
@@ -403,7 +403,7 @@ marginalRa = []
 marginal_sigRa = []
 marginalkx = []
 sig_list=[0.01,0.001]
-re_list=[10]
+re_list=[0]
 fig, (margRa_ax,margKx_ax) = plt.subplots(2, 1,sharex='row')
 fig.suptitle('Marginal Stability Curves')
 for r in re_list: 
@@ -471,9 +471,9 @@ for r in re_list:
         else:
             header = '[Background adiabat, Marginal Ra, Marginal (rescaled) Ra, Marginal kx] sig = {}, Re = {}, Nz = {}, kx ~ {}'.format(sigma,r,Nz,'LOG')
         try: 
-            np.savetxt('/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/sig{}/dataraw'.format(sigma,r)+csvfile, np.column_stack((ad_list, marginalRa,marginal_sigRa,marginalkx)), delimiter=",", fmt='%s', header=header)
+            np.savetxt('/home/iiw7750/Convection/eigenvalprob_plots/marginalstabilityconditions/sig{}/'.format(sigma)+csvfile, np.column_stack((ad_list, marginalRa,marginal_sigRa,marginalkx)), delimiter=",", fmt='%s', header=header)
         except Exception as e:
-            np.savetxt('/home/brogers/Convection/eigenvalprob_plots/marginalstabilityconditions/sig{}/dataraw/'.format(sigma,r)+csvfile, np.column_stack((ad_list, marginalRa,marginal_sigRa,marginalkx)), delimiter=",", fmt='%s', header=header)
+            np.savetxt('/home/brogers/Convection/eigenvalprob_plots/marginalstabilityconditions/sig{}/'.format(sigma)+csvfile, np.column_stack((ad_list, marginalRa,marginal_sigRa,marginalkx)), delimiter=",", fmt='%s', header=header)
 if kxbool:
     figfile='ad_lower{}ad_upper{}'.format(ad_lower,ad_upper)+'sigs{}'.format(sig_list)+'Nz{}'.format(Nz)+'kxlen{}'.format(len(kx_global))+'Re{}'.format(re_list)+'_INTmarginalstabilitycurve.png'
 else:
